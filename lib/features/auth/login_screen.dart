@@ -34,7 +34,7 @@ class LoginScreen extends StatelessWidget {
                 // qui simula login
                 Navigator.pushReplacementNamed(context, '/home');
               },
-              child: Text('Accedi'),
+              child: Text('Log in'),
             ),
           ],
         ),
