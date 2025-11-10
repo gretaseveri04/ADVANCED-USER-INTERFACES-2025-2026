@@ -5,36 +5,41 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ottiene l'altezza dello schermo per un layout adattivo
+    // Retrieves the screen height for an adaptive layout
     final screenHeight = MediaQuery.of(context).size.height;
     
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset( 
-              'assets/images/logo.png', height: screenHeight * 0.2),
-            SizedBox(height: 24),
-            Text('Welcome!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 32),
-            TextField(
+              'assets/images/logo.png', 
+              height: screenHeight * 0.2, // Image height scaled to 20% of screen height
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Welcome!', 
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)
+            ),
+            const SizedBox(height: 32),
+            const TextField(
               decoration: InputDecoration(labelText: 'Username'),
             ),
-            SizedBox(height: 16),
-            TextField(
+            const SizedBox(height: 16),
+            const TextField(
               decoration: InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                // qui simula login
+              
                 Navigator.pushReplacementNamed(context, '/home');
               },
-              child: Text('Log in'),
+              child: const Text('Log in'),
             ),
           ],
         ),

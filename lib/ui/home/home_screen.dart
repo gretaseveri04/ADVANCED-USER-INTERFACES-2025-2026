@@ -9,55 +9,53 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Usiamo il SafeArea per non coprire la barra di stato e la notch
     return const Scaffold(
-      // Rimuovo l'AppBar di default per un layout a schermo intero come nella foto
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Intestazione con Nome, Data e Avatar
+              
               _HeaderSection(),
               SizedBox(height: 20),
               
-              // Sezione TO-DO (semplificata per il layout, come un divisore)
+              
               Text(
                 'TODAY\'S TODO LIST',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
-              // Qui potresti inserire una Row con le tue attività
+              
               Divider(), 
               SizedBox(height: 20),
 
-              // Sezione Servizi
+             
               Text(
                 'OUR SERVICES',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 15),
 
-              // Griglia dei Servizi (2x2)
+              
               _ServicesGrid(),
             ],
           ),
         ),
       ),
-      // Pulsante di accesso rapido Chatbot in basso a destra (Floating Action Button)
+      // (Floating Action Button)
       floatingActionButton: _FloatingChatButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
 
-// --- Componenti Riutilizzabili ---
 
 class _HeaderSection extends StatelessWidget {
   const _HeaderSection();
 
   @override
   Widget build(BuildContext context) {
-    // Usiamo Row per affiancare il testo (nome/data) e l'avatar
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -72,7 +70,6 @@ class _HeaderSection extends StatelessWidget {
               ),
             ),
             Text(
-              // Data corrente come nella foto
               'today: 31 ottobre 2025', 
               style: TextStyle(
                 fontSize: 16,
@@ -82,13 +79,12 @@ class _HeaderSection extends StatelessWidget {
           ],
         ),
         
-        // Avatar con gradiente (CircleAvatar per la forma circolare)
+        
         Container(
           width: 200,
           height: 200,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            // Simula il bordo gradiente con un gradiente di sfondo
             gradient: LinearGradient(
               colors: [Colors.purple, Colors.yellow],
               begin: Alignment.topLeft,
@@ -96,7 +92,7 @@ class _HeaderSection extends StatelessWidget {
             ),
           ),
           child: const Center(
-            // Icona Utente (al posto della foto)
+            // User icon
             child: Icon(
               Icons.person,
               size: 40,
@@ -126,7 +122,6 @@ class _ServiceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Logica di navigazione/azione qui
         if (title == 'RECORDINGS AND TRANSCRIPTION') {
           Navigator.pushNamed(context, '/transcription');
         } else if (title == 'CHATBOT') {
@@ -137,7 +132,6 @@ class _ServiceCard extends StatelessWidget {
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          // Sfondo con gradiente morbido come nella foto
           gradient: LinearGradient(
             colors: colors,
             begin: Alignment.topLeft,
@@ -185,15 +179,15 @@ class _ServicesGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      // Impedisce lo scrolling separato da quello della SingleChildScrollView
+      
       physics: const NeverScrollableScrollPhysics(), 
       shrinkWrap: true,
       crossAxisCount: 2, // 2 colonne
       crossAxisSpacing: 15, // Spazio orizzontale
       mainAxisSpacing: 15, // Spazio verticale
-      childAspectRatio: 0.9, // Rende le card leggermente rettangolari verticalmente
+      childAspectRatio: 0.9, 
       children: [
-        // Button 1: Recordings e Trascrizione
+        // Recordings e Trascrizione
         _ServiceCard(
           title: 'RECORDINGS AND TRANSCRIPTION',
           icon: Icons.mic_rounded,
@@ -203,9 +197,9 @@ class _ServicesGrid extends StatelessWidget {
           ],
         ),
 
-        // Button 2: Summary of the Day (Placeholder)
+        // Summary of the Day (Placeholder)
         _ServiceCard(
-          title: 'SUMMARY OF THE DAY',
+          title: 'START RECORDING',
           icon: Icons.lightbulb_outline,
           colors: [
             Colors.blue.shade100,
@@ -213,7 +207,7 @@ class _ServicesGrid extends StatelessWidget {
           ],
         ),
 
-        // Button 3: Chatbot (AI Chat)
+        // Chatbot (AI Chat)
         _ServiceCard(
           title: 'CHATBOT',
           icon: Icons.chat_bubble_outline,
@@ -223,9 +217,9 @@ class _ServicesGrid extends StatelessWidget {
           ],
         ),
 
-        // Button 4: Personal Support (Placeholder)
+        // da decidere
         _ServiceCard(
-          title: 'PERSONAL SUPPORT',
+          title: 'xyz',
           icon: Icons.support_agent_rounded,
           colors: [
             Colors.green.shade100,
@@ -246,14 +240,13 @@ class _FloatingChatButton extends StatelessWidget {
       onPressed: () {
         Navigator.pushNamed(context, '/chat');
       },
-      backgroundColor: const Color(0xFF673AB7), // Colore viola
+      backgroundColor: const Color(0xFF673AB7), 
       shape: const CircleBorder(),
       child: Container(
         width: 56,
         height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          // Gradiente per l'effetto del Floating Button
           gradient: LinearGradient(
             colors: [Colors.purple.shade300, Colors.orange.shade300],
             begin: Alignment.topLeft,

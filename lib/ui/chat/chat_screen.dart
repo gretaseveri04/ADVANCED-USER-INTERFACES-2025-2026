@@ -3,7 +3,7 @@ import 'package:limitless_app/core/services/ai_service.dart';
 
 class ChatMessage {
   final String content;
-  final String role; // 'user' or 'assistant'
+  final String role; 
   final DateTime timestamp;
 
   ChatMessage({
@@ -13,7 +13,7 @@ class ChatMessage {
   });
 }
 
-// --- La Chat Screen Migliorata ---
+
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -60,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _controller.clear();
-    _scrollToBottom(); // Scorri dopo aver aggiunto il messaggio utente
+    _scrollToBottom(); 
 
     try {
       final reply = await AIService.sendMessage(text);
@@ -82,23 +82,23 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = false;
       });
-      _scrollToBottom(); // Scorri dopo aver ricevuto la risposta
+      _scrollToBottom(); 
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Sfondo leggermente grigio per staccare i messaggi
+      
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Image.asset(
-          'assets/images/logo.png', // <--- Questo deve essere identico
+          'assets/images/logo.png', 
           height: 48,
         ),
 
         centerTitle: true,
-        elevation: 0, // Rimuovi l'ombra per un look flat
+        elevation: 0, 
         backgroundColor: Colors.white,
 
 
@@ -118,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (_isLoading)
             const LinearProgressIndicator(
-              // Indicatore di caricamento più sottile
+              
               color: Colors.deepPurple,
             ),
           _ChatInputField(
@@ -131,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// --- Componente per la bolla del messaggio ---
+
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
 
@@ -151,7 +151,6 @@ class _MessageBubble extends StatelessWidget {
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          // Max 75% della larghezza dello schermo
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -160,7 +159,7 @@ class _MessageBubble extends StatelessWidget {
           color: isUser ? Colors.deepPurple : Colors.white,
           borderRadius: borderRadius,
           boxShadow: [
-            // Ombra leggera per dare profondità
+            
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
               blurRadius: 2,
@@ -178,17 +177,6 @@ class _MessageBubble extends StatelessWidget {
                 fontSize: 16,
               ),
             ),
-            // Opzionale: Mostra timestamp
-            // Padding(
-            //   padding: const EdgeInsets.only(top: 4.0),
-            //   child: Text(
-            //     '${message.timestamp.hour}:${message.timestamp.minute}',
-            //     style: TextStyle(
-            //       color: isUser ? Colors.white70 : Colors.black45,
-            //       fontSize: 10,
-            //     ),
-            //   ),
-            // ),
           ],
         ),
       ),
@@ -196,7 +184,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// --- Componente per la barra di input (come nell'immagine) ---
+// Inputbar widget
 class _ChatInputField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
@@ -207,10 +195,9 @@ class _ChatInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      color: Colors.white, // Sfondo bianco per la barra di input
+      color: Colors.white, 
       child: Row(
         children: [
-          // Icona opzionale come nell'immagine (microfono o allegato)
           IconButton(
             icon: const Icon(Icons.mic, color: Colors.grey),
             onPressed: () {},
@@ -219,21 +206,21 @@ class _ChatInputField extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
-                color: Colors.grey[100], // Sfondo leggero per il campo testo
+                color: Colors.grey[100], 
                 borderRadius: BorderRadius.circular(25),
               ),
               child: TextField(
                 controller: controller,
                 decoration: const InputDecoration(
                   hintText: "Message...",
-                  border: InputBorder.none, // Rimuovi il bordo predefinito
+                  border: InputBorder.none, 
                   contentPadding: EdgeInsets.zero,
                 ),
                 onSubmitted: (_) => onSend(),
               ),
             ),
           ),
-          // Pulsante Invia / Icona Emoji opzionale
+         
           IconButton(
             icon: const Icon(Icons.send, color: Colors.deepPurple),
             onPressed: onSend,

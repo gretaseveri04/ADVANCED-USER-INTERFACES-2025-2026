@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'features/auth/login_screen.dart';
-import 'features/home/home_screen.dart';
-import 'features/transcription/transcription_screen.dart';
-import 'features/transcription/transcription_detail_screen.dart';
-import 'features/chat/chat_screen.dart';
+import 'ui/auth/login_screen.dart';
+import 'ui/home/home_screen.dart';
+import 'ui/transcription/transcription_screen.dart';
+import 'ui/transcription/transcription_detail_screen.dart';
+import 'ui/chat/chat_screen.dart';
 
 class MyApp extends StatelessWidget {
   @override

@@ -6,14 +6,14 @@ class TranscriptionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Dettaglio Trascrizione')),
+      appBar: AppBar(title: Text('Transcription Details')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text('Testo completo della trascrizione qui...', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 16),
-            Text('Segmenti, keyword o summary da mock API qui', style: TextStyle(color: Colors.grey)),
+            Text('Complete text here...', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 16), 
+            Text('Keyword o summary here', style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),

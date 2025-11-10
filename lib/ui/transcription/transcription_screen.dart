@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/lifelog_model.dart';
+
 
 class TranscriptionScreen extends StatelessWidget {
   const TranscriptionScreen({super.key});
@@ -19,10 +19,10 @@ class TranscriptionScreen extends StatelessWidget {
             fontSize: 18,
           ),
         ),
-        centerTitle: false, // Per allineare il titolo a sinistra
-        backgroundColor: Colors.transparent, // Sfondo trasparente
-        elevation: 0, // Nessuna ombra
-        foregroundColor: Colors.black, // Colore delle icone/testo dell'AppBar
+        centerTitle: false, 
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
+        foregroundColor: Colors.black, 
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -31,12 +31,10 @@ class TranscriptionScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
-            // --- Sezione WORK ---
+            
             _CategoryHeader(
               title: 'WORK',
               subtitle: 'User\'s company',
-              // Per l'immagine del Politecnico, avresti bisogno di un asset
-              // Per semplicità, userò un CircleAvatar con un'icona
               leadingWidget: Container(
                 width: 60,
                 height: 60,
@@ -44,12 +42,10 @@ class TranscriptionScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.grey.shade300, width: 1),
                   image: const DecorationImage(
-                    image: AssetImage('assets/images/polimi_logo.png'), // <--- Assicurati di aggiungere questo asset!
+                    image: AssetImage('assets/images/polimi_logo.png'), 
                     fit: BoxFit.cover,
                   ),
                 ),
-                // Se non hai il logo, puoi usare un'icona di fallback:
-                // child: const Icon(Icons.business_center, size: 30, color: Colors.grey),
               ),
             ),
             const SizedBox(height: 10),
@@ -58,17 +54,17 @@ class TranscriptionScreen extends StatelessWidget {
             _buildRecordingItem(context, 'DOC REVIEW', 7),
             _buildRecordingItem(context, 'CLIENT CALL', 15),
 
-            const SizedBox(height: 30), // Spazio tra le categorie
+            const SizedBox(height: 30), 
 
-            // --- Sezione Book Club ---
+           
             _CategoryHeader(
               title: 'Book Club',
               leadingWidget: Container(
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15), // Bordi arrotondati
-                  color: Colors.purple.shade50, // Sfondo leggermente colorato
+                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.purple.shade50, 
                 ),
                 child: Icon(Icons.book_outlined, size: 35, color: Colors.purple.shade300),
               ),
@@ -78,19 +74,19 @@ class TranscriptionScreen extends StatelessWidget {
             _buildRecordingItem(context, 'ANIMAL FARM', 1),
             _buildRecordingItem(context, 'THE GREAT GATSBY', 1),
 
-            const SizedBox(height: 50), // Spazio extra in fondo
+            const SizedBox(height: 50), 
           ],
         ),
       ),
     );
   }
 
-  // Widget helper per costruire ogni riga di registrazione
+  
   Widget _buildRecordingItem(BuildContext context, String title, int count) {
     return Column(
       children: [
         ListTile(
-          contentPadding: EdgeInsets.zero, // Rimuove il padding di default di ListTile
+          contentPadding: EdgeInsets.zero, 
           title: Text(
             title,
             style: const TextStyle(
@@ -112,21 +108,21 @@ class TranscriptionScreen extends StatelessWidget {
             ],
           ),
           onTap: () {
-            // Logica per navigare al dettaglio della registrazione
+            
             Navigator.pushNamed(context, '/transcriptionDetail', arguments: title);
           },
         ),
-        const Divider(height: 1, thickness: 0.5, color: Colors.grey), // Separatore sottile
+        const Divider(height: 1, thickness: 0.5, color: Colors.grey), 
       ],
     );
   }
 }
 
-// Widget per l'intestazione di ogni categoria (es. WORK, Book Club)
+// (es. WORK, Book Club)
 class _CategoryHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
-  final Widget leadingWidget; // Può essere un'immagine o un'icona
+  final Widget leadingWidget; 
 
   const _CategoryHeader({
     required this.title,
@@ -141,7 +137,7 @@ class _CategoryHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          leadingWidget, // L'immagine o l'icona
+          leadingWidget, 
           const SizedBox(width: 15),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

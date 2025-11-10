@@ -3,15 +3,15 @@ import 'package:http/http.dart' as http;
 import 'package:limitless_app/config/keys.dart';
 import 'package:flutter/foundation.dart';
 
-/// Servizio per interagire con Azure OpenAI
+/// Service for interacting with Azure OpenAI
 class AIService {
-  /// Prompt di sistema per definire il ruolo dell'assistente
+  /// Prompt
   static const Map<String, String> _systemMessage = {
     "role": "system",
     "content": "You are a highly specialized AI Transcription Analysis Assistant. Your primary function is to process raw transcription text (e.g., meeting notes, interviews, lectures). You must provide concise summaries, identify critical action items, extract key decisions, and answer user questions strictly based on the provided text content. Maintain a professional, objective, and analytical tone. All your responses must be delivered in clear, grammatically correct English."
   };
 
-  /// Metodo per inviare un messaggio e ricevere la risposta del modello
+  /// Method to send a message and receive the model's response
   static Future<String> sendMessage(String userMessage) async {
     final url = Uri.parse(
       "${endpoint}openai/deployments/$deploymentName/chat/completions?api-version=$apiVersion",
@@ -32,55 +32,33 @@ class AIService {
       "top_p": 0.9,
     });
 
-try {
-      // 4. Esecuzione della Chiamata HTTP
+    try {
       final response = await http.post(url, headers: headers, body: body);
 
+      // Handle API Response 
       if (response.statusCode == 200) {
-        // 5. Gestione del Successo
         final data = jsonDecode(response.body);
         
-        // Verifica la struttura della risposta prima di accedere ai dati
+        // Check if the response content is valid
         if (data['choices'] != null && data['choices'].isNotEmpty) {
            final reply = data['choices'][0]['message']['content'] as String;
-           return reply;
+           return reply; 
         } else {
-           // Caso in cui l'API restituisce 200 ma senza risposta valida
-           throw const FormatException("API response successful but no content found in 'choices'.");
+           // The API responded 200, but the expected content is missing
+           throw const FormatException("API response successful but no content found.");
         }
       } else {
-        // 6. Gestione degli Errori non-200
-        // Stampa il corpo solo in modalità debug per sicurezza
-        if (kDebugMode) {
-          print("Azure OpenAI API Error (${response.statusCode}): ${response.body}");
-        }
-        
-        // Tentativo di estrarre un messaggio di errore leggibile da Azure
-        String errorMessage = "Unknown API Error";
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMessage = errorData['error']['message'] ?? errorMessage;
-        } catch (_) {
-          // Ignora se la risposta non è JSON valida
-        }
+        // The call failed (e.g., 400, 401, 500)
 
-        // Lancia un'eccezione specifica con lo stato e il messaggio
-        throw HttpException("API call failed with status ${response.statusCode}: $errorMessage");
+        if (kDebugMode) {
+           print("Azure OpenAI API Error (${response.statusCode}): ${response.body}");
+        }
+        throw Exception("API call failed with status ${response.statusCode}.");
       }
-    } on http.ClientException catch (e) {
-      // Gestione di errori di rete (es. timeout, nessuna connessione)
-      throw Exception("Network Error during API call: ${e.message}");
-    } catch (e) {
-      // Gestione di altri errori (es. FormatException)
-      rethrow; 
+    } 
+  
+    catch (e) {
+      throw Exception("An error occurred during API call: $e");
     }
   }
 }
-// Devi anche definire la classe HttpException se vuoi lanciarla
-class HttpException implements Exception {
-  final String message;
-  const HttpException(this.message);
-  @override
-  String toString() => 'HttpException: $message';
-}
-  
