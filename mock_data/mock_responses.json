@@ -1,0 +1,20 @@
+{
+  "lifelogs": [
+    {
+      "id": "log1",
+      "title": "PROJECT MEETING",
+      "date": "2025-10-31",
+      "content": "Discussione sulla fase 3 del progetto Alfa...",
+      "category": "WORK",
+      "recordingCount": 7
+    },
+    {
+      "id": "log5",
+      "title": "1984",
+      "date": "2025-10-31",
+      "content": "Discussione del capitolo 3 del libro 1984.",
+      "category": "Book Club",
+      "recordingCount": 1
+    }
+    ]
+}

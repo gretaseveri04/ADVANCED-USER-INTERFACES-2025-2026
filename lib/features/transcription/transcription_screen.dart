@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../models/lifelog_model.dart';
 
 class TranscriptionScreen extends StatelessWidget {
   const TranscriptionScreen({super.key});
