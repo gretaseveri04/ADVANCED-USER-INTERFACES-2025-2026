@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
-
+import 'package:limitless_app/core/services/mock_api_service.dart';
+import 'package:limitless_app/models/lifelog_model.dart';
 
 class TranscriptionScreen extends StatelessWidget {
   const TranscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Carica i dati in modo sincrono
+    final service = LifelogMockService();
+    final lifelogs = service.getLifelogs().lifelogs;
+
+    // Raggruppa i lifelogs per categoria
+    final Map<String, List<Lifelog>> groupedLogs = {};
+    for (var log in lifelogs) {
+      if (!groupedLogs.containsKey(log.category)) {
+        groupedLogs[log.category] = [];
+      }
+      groupedLogs[log.category]!.add(log);
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -19,10 +33,10 @@ class TranscriptionScreen extends StatelessWidget {
             fontSize: 18,
           ),
         ),
-        centerTitle: false, 
-        backgroundColor: Colors.transparent, 
-        elevation: 0, 
-        foregroundColor: Colors.black, 
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -31,64 +45,78 @@ class TranscriptionScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
-            
-            _CategoryHeader(
-              title: 'WORK',
-              subtitle: 'User\'s company',
-              leadingWidget: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/polimi_logo.png'), 
-                    fit: BoxFit.cover,
+            // Genera dinamicamente le categorie e i loro item
+            ...groupedLogs.entries.map((entry) {
+              final category = entry.key;
+              final logs = entry.value;
+
+              return Column(
+                children: [
+                  _CategoryHeader(
+                    title: category,
+                    subtitle: category == 'WORK' ? 'User\'s company' : null,
+                    leadingWidget: _getCategoryIcon(category),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildRecordingItem(context, 'PROJECT MEETING', 7),
-            _buildRecordingItem(context, 'TRANING SESSION', 10),
-            _buildRecordingItem(context, 'DOC REVIEW', 7),
-            _buildRecordingItem(context, 'CLIENT CALL', 15),
+                  const SizedBox(height: 10),
+                  ...logs.map((log) => _buildRecordingItem(context, log)),
+                  const SizedBox(height: 30),
+                ],
+              );
+            }).toList(),
 
-            const SizedBox(height: 30), 
-
-           
-            _CategoryHeader(
-              title: 'Book Club',
-              leadingWidget: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  color: Colors.purple.shade50, 
-                ),
-                child: Icon(Icons.book_outlined, size: 35, color: Colors.purple.shade300),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildRecordingItem(context, '1984', 1),
-            _buildRecordingItem(context, 'ANIMAL FARM', 1),
-            _buildRecordingItem(context, 'THE GREAT GATSBY', 1),
-
-            const SizedBox(height: 50), 
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  
-  Widget _buildRecordingItem(BuildContext context, String title, int count) {
+  // Genera l'icona appropriata per ogni categoria
+  Widget _getCategoryIcon(String category) {
+    if (category == 'WORK') {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade300, width: 1),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/polimi_logo.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else if (category == 'Book Club') {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: Colors.purple.shade50,
+        ),
+        child: Icon(Icons.book_outlined, size: 35, color: Colors.purple.shade300),
+      );
+    } else {
+      // Icona di default per altre categorie
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: Colors.blue.shade50,
+        ),
+        child: Icon(Icons.folder_outlined, size: 35, color: Colors.blue.shade300),
+      );
+    }
+  }
+
+  Widget _buildRecordingItem(BuildContext context, Lifelog log) {
     return Column(
       children: [
         ListTile(
-          contentPadding: EdgeInsets.zero, 
+          contentPadding: EdgeInsets.zero,
           title: Text(
-            title,
+            log.title,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -98,7 +126,7 @@ class TranscriptionScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$count Recordings',
+                '${log.recordingCount} Recordings',
                 style: const TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
@@ -108,21 +136,23 @@ class TranscriptionScreen extends StatelessWidget {
             ],
           ),
           onTap: () {
-            
-            Navigator.pushNamed(context, '/transcriptionDetail', arguments: title);
+            Navigator.pushNamed(
+              context,
+              '/transcriptionDetail',
+              arguments: log,
+            );
           },
         ),
-        const Divider(height: 1, thickness: 0.5, color: Colors.grey), 
+        const Divider(height: 1, thickness: 0.5, color: Colors.grey),
       ],
     );
   }
 }
 
-// (es. WORK, Book Club)
 class _CategoryHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
-  final Widget leadingWidget; 
+  final Widget leadingWidget;
 
   const _CategoryHeader({
     required this.title,
@@ -137,7 +167,7 @@ class _CategoryHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          leadingWidget, 
+          leadingWidget,
           const SizedBox(width: 15),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
