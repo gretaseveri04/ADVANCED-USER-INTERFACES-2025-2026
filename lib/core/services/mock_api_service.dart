@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:limitless_app/models/lifelog_model.dart';
 
 class LifelogMockService {
@@ -13,7 +12,10 @@ class LifelogMockService {
         "date": "2025-10-31",
         "content": "Discussione sulla fase 3 del progetto Alfa...",
         "category": "WORK",
-        "recordingCount": 7
+        "recordingCount": 1,
+        "transcriptions": [
+          "Contenuto 1 tutto bene"
+        ]
       },
       {
         "id": "log2",
@@ -21,7 +23,8 @@ class LifelogMockService {
         "date": "2025-10-30",
         "content": "Sessione di formazione sul nuovo sistema...",
         "category": "WORK",
-        "recordingCount": 10
+        "recordingCount": 2,
+        "transcriptions": []
       },
       {
         "id": "log3",
@@ -29,7 +32,8 @@ class LifelogMockService {
         "date": "2025-10-29",
         "content": "Revisione documentazione tecnica...",
         "category": "WORK",
-        "recordingCount": 7
+        "recordingCount": 1,
+        "transcriptions": []
       },
       {
         "id": "log4",
@@ -37,7 +41,8 @@ class LifelogMockService {
         "date": "2025-10-28",
         "content": "Chiamata con il cliente per requirements...",
         "category": "WORK",
-        "recordingCount": 15
+        "recordingCount": 1,
+        "transcriptions": []
       },
       {
         "id": "log5",
@@ -45,7 +50,8 @@ class LifelogMockService {
         "date": "2025-10-31",
         "content": "Discussione del capitolo 3 del libro 1984.",
         "category": "Book Club",
-        "recordingCount": 1
+        "recordingCount": 1,
+        "transcriptions": []
       },
       {
         "id": "log6",
@@ -53,7 +59,8 @@ class LifelogMockService {
         "date": "2025-10-25",
         "content": "Analisi dei temi principali di Animal Farm.",
         "category": "Book Club",
-        "recordingCount": 1
+        "recordingCount": 1,
+        "transcriptions": []
       },
       {
         "id": "log7",
@@ -61,7 +68,8 @@ class LifelogMockService {
         "date": "2025-10-20",
         "content": "Discussione sul simbolismo nel romanzo.",
         "category": "Book Club",
-        "recordingCount": 1
+        "recordingCount": 1,
+        "transcriptions": []
       }
     ]
   }

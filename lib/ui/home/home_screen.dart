@@ -123,7 +123,7 @@ class _ServiceCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (title == 'RECORDINGS AND TRANSCRIPTION') {
-          Navigator.pushNamed(context, '/transcription');
+          Navigator.pushNamed(context, '/lifelog');
         } else if (title == 'CHATBOT') {
           Navigator.pushNamed(context, '/chat');
         }

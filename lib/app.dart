@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
 import 'ui/auth/login_screen.dart';
 import 'ui/home/home_screen.dart';
 import 'ui/transcription/transcription_screen.dart';
@@ -18,6 +19,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (_) => LoginScreen(),
         '/home': (_) => HomeScreen(),
+        '/lifelog': (_) => LifelogScreen(),
         '/transcription': (_) => TranscriptionScreen(),
         '/transcriptionDetail': (_) => TranscriptionDetailScreen(),
         '/chat': (_) => ChatScreen(),
