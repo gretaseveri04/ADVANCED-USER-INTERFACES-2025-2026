@@ -219,7 +219,7 @@ class _ServicesGrid extends StatelessWidget {
 
         // da decidere
         _ServiceCard(
-          title: 'xyz',
+          title: 'others',
           icon: Icons.support_agent_rounded,
           colors: [
             Colors.green.shade100,
