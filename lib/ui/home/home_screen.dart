@@ -1,265 +1,225 @@
 import 'package:flutter/material.dart';
 
-
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Usiamo il SafeArea per non coprire la barra di stato e la notch
-    return const Scaffold(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8FF),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
-              _HeaderSection(),
-              SizedBox(height: 20),
-              
-              
-              Text(
-                'TODAY\'S TODO LIST',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              
-              Divider(), 
-              SizedBox(height: 20),
-
-             
-              Text(
-                'OUR SERVICES',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 15),
-
-              
-              _ServicesGrid(),
+              _buildHeader(),
+              const SizedBox(height: 25),
+              _buildUserInfo(),
+              const SizedBox(height: 25),
+              _buildCalendarCard(),
+              const SizedBox(height: 25),
+              _buildTodoList(),
+              const SizedBox(height: 25),
+              _buildRecordSection(),
             ],
           ),
         ),
       ),
-      // (Floating Action Button)
-      floatingActionButton: _FloatingChatButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
-}
 
-
-class _HeaderSection extends StatelessWidget {
-  const _HeaderSection();
-
-  @override
-  Widget build(BuildContext context) {
-    
+  Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
           children: [
-            Text(
-              'YOUR NAME',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                  )
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 30,
               ),
             ),
-            Text(
-              'today: 31 ottobre 2025', 
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
+            const SizedBox(width: 10),
+            const Text(
+              "Dashboard",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        
-        
-        Container(
-          width: 200,
-          height: 200,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [Colors.purple, Colors.yellow],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        const CircleAvatar(
+          radius: 46,
+          backgroundColor: Colors.white,
+          child: Text(
+            '😊',
+            style: TextStyle(fontSize: 28),
           ),
-          child: const Center(
-            // User icon
-            child: Icon(
-              Icons.person,
-              size: 40,
-              color: Colors.white,
-              
-            ),
-          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildUserInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          "YOUR NAME",
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 4),
+        Text(
+          "today: November 25, 2025",
+          style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
     );
   }
-}
 
-
-class _ServiceCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<Color> colors;
-
-  const _ServiceCard({
-    required this.title,
-    required this.icon,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (title == 'RECORDINGS AND TRANSCRIPTION') {
-          Navigator.pushNamed(context, '/lifelog');
-        } else if (title == 'CHATBOT') {
-          Navigator.pushNamed(context, '/chat');
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: colors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  Widget _buildCalendarCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F1F5),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.calendar_month, size: 30),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: colors.last.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Text(
+              "your calendar",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            // Icona decorativa
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Icon(
-                icon,
-                size: 40,
-                color: Colors.black.withOpacity(0.4),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const Icon(Icons.arrow_forward_ios, size: 18)
+        ],
       ),
     );
   }
-}
 
-class _ServicesGrid extends StatelessWidget {
-  const _ServicesGrid();
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      
-      physics: const NeverScrollableScrollPhysics(), 
-      shrinkWrap: true,
-      crossAxisCount: 2, // 2 colonne
-      crossAxisSpacing: 15, // Spazio orizzontale
-      mainAxisSpacing: 15, // Spazio verticale
-      childAspectRatio: 0.9, 
+  Widget _buildTodoList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Recordings e Trascrizione
-        _ServiceCard(
-          title: 'RECORDINGS AND TRANSCRIPTION',
-          icon: Icons.mic_rounded,
-          colors: [
-            Colors.purple.shade100,
-            Colors.white,
-          ],
+        const Text(
+          "TODAY'S TODO LIST",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-
-        // Summary of the Day (Placeholder)
-        _ServiceCard(
-          title: 'START RECORDING',
-          icon: Icons.lightbulb_outline,
-          colors: [
-            Colors.blue.shade100,
-            Colors.white,
-          ],
-        ),
-
-        // Chatbot (AI Chat)
-        _ServiceCard(
-          title: 'CHATBOT',
-          icon: Icons.chat_bubble_outline,
-          colors: [
-            Colors.orange.shade100,
-            Colors.white,
-          ],
-        ),
-
-        // da decidere
-        _ServiceCard(
-          title: 'others',
-          icon: Icons.support_agent_rounded,
-          colors: [
-            Colors.green.shade100,
-            Colors.white,
-          ],
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 90,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _todoCard("9:30 am", "team meeting"),
+              _todoCard("1:45 pm", "co-work session"),
+            ],
+          ),
         ),
       ],
     );
   }
-}
 
-class _FloatingChatButton extends StatelessWidget {
-  const _FloatingChatButton();
+  Widget _todoCard(String time, String task) {
+    return Container(
+      width: 150,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAE7FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(time, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(task, style: const TextStyle(color: Colors.black54)),
+        ],
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton(
-      onPressed: () {
-        Navigator.pushNamed(context, '/chat');
-      },
-      backgroundColor: const Color(0xFF673AB7), 
-      shape: const CircleBorder(),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [Colors.purple.shade300, Colors.orange.shade300],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  Widget _buildRecordSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "START RECORDING",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFE0F0), Color(0xFFE0E8FF)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Record audio with automatic AI transcription",
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFA8C9), Color(0xFFAEC9FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.mic, color: Colors.white),
+                      SizedBox(width: 10),
+                      Text(
+                        "Record Audio",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        child: Image.asset(
-          'assets/images/logo.png', 
-          width: 28,
-          height: 28,
-          
-        ),
-      ),
+      ],
     );
   }
 }

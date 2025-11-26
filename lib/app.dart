@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:limitless_app/ui/main_layout.dart';
 import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
 import 'ui/auth/login_screen.dart';
-import 'ui/home/home_screen.dart';
+//import 'ui/home/home_screen.dart';
 import 'ui/transcription/transcription_screen.dart';
 import 'ui/transcription/transcription_detail_screen.dart';
 import 'ui/chat/chat_screen.dart';
@@ -18,7 +19,8 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (_) => LoginScreen(),
-        '/home': (_) => HomeScreen(),
+        //'/home': (_) => HomeScreen(),
+        "/home": (_) =>  MainLayout(),
         '/lifelog': (_) => LifelogScreen(),
         '/transcription': (_) => TranscriptionScreen(),
         '/transcriptionDetail': (_) => TranscriptionDetailScreen(),
