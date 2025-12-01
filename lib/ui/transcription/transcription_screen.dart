@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:limitless_app/models/lifelog_model.dart';
 
 class TranscriptionScreen extends StatelessWidget {
-  const TranscriptionScreen({super.key});
+  final Lifelog lifelog;
+
+  const TranscriptionScreen({
+    super.key,
+    required this.lifelog,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Recupera il log passato come argomento
-    final Lifelog log = ModalRoute.of(context)!.settings.arguments as Lifelog;
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -16,7 +18,7 @@ class TranscriptionScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          log.title.toUpperCase(),
+          lifelog.title.toUpperCase(),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -27,7 +29,7 @@ class TranscriptionScreen extends StatelessWidget {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      body: log.transcriptions.isEmpty
+      body: lifelog.transcriptions.isEmpty
           ? const Center(
               child: Text(
                 'Nessuna trascrizione disponibile',
@@ -36,9 +38,9 @@ class TranscriptionScreen extends StatelessWidget {
             )
           : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-              itemCount: log.transcriptions.length,
+              itemCount: lifelog.transcriptions.length,
               itemBuilder: (context, index) {
-                final transcription = log.transcriptions[index];
+                final transcription = lifelog.transcriptions[index];
                 return _buildTranscriptionItem(context, transcription, index);
               },
             ),

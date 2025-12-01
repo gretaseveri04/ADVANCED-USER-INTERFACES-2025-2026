@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:limitless_app/config/keys.dart';
+import 'package:limitless_app/models/lifelog_model.dart';
 import 'package:limitless_app/ui/auth/login_screen.dart';
+import 'package:limitless_app/ui/chat/chat_screen.dart';
 import 'package:limitless_app/ui/main_layout.dart';
+import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
+import 'package:limitless_app/ui/transcription/transcription_screen.dart';
+import 'package:limitless_app/ui/transcription/transcription_detail_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,12 +17,10 @@ void main() async {
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     final supabase = Supabase.instance.client;
@@ -31,12 +33,28 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
 
-      // 🔥 QUI scegliamo cosa mostrare all'avvio
-      home: supabase.auth.currentSession == null
-          ? const LoginScreen()      // utente non loggato → login
-          : const MainLayout(),      // utente loggato → app principale
+      // login o main a seconda dello stato auth
+      initialRoute: supabase.auth.currentSession == null ? '/login' : '/home',
 
-      
+      routes: {
+        '/login': (_) => const LoginScreen(),
+        '/home': (_) => const MainLayout(),
+        '/lifelog': (_) => const LifelogScreen(),
+        '/chat': (_) => const ChatScreen(),
+        '/transcriptionDetail': (_) => const TranscriptionDetailScreen(),
+      },
+
+      onGenerateRoute: (settings) {
+        if (settings.name == '/transcription') {
+          final lifelog = settings.arguments as Lifelog;
+          return MaterialPageRoute(
+            builder: (_) => TranscriptionScreen(lifelog: lifelog),
+            settings: settings,
+          );
+        }
+
+        return null;
+      },
     );
   }
 }
