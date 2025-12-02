@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 // ... assicurati che gli altri import ci siano ...
 import 'package:limitless_app/ui/chat/chat_screen.dart';
 import 'package:limitless_app/ui/home/home_screen.dart';
-import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
+import 'package:limitless_app/ui/transcript/lifelog_screen.dart';
 import 'package:limitless_app/ui/messages/messages_list_screen.dart';
 import 'package:limitless_app/widgets/custom_buttom_nav.dart';
 import 'package:limitless_app/ui/profile/profile_screen.dart';

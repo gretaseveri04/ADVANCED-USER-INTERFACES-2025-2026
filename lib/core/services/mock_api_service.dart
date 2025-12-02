@@ -13,8 +13,8 @@ class LifelogMockService {
         "content": "Discussione sulla fase 3 del progetto Alfa...",
         "category": "WORK",
         "recordingCount": 1,
-        "transcriptions": [
-          "Contenuto 1 tutto bene"
+        "transcripts": [
+          "Contenuto 1"
         ]
       },
       {
@@ -24,7 +24,7 @@ class LifelogMockService {
         "content": "Sessione di formazione sul nuovo sistema...",
         "category": "WORK",
         "recordingCount": 2,
-        "transcriptions": []
+        "transcripts": []
       },
       {
         "id": "log3",
@@ -33,7 +33,7 @@ class LifelogMockService {
         "content": "Revisione documentazione tecnica...",
         "category": "WORK",
         "recordingCount": 1,
-        "transcriptions": []
+        "transcripts": []
       },
       {
         "id": "log4",
@@ -42,7 +42,7 @@ class LifelogMockService {
         "content": "Chiamata con il cliente per requirements...",
         "category": "WORK",
         "recordingCount": 1,
-        "transcriptions": []
+        "transcripts": []
       },
       {
         "id": "log5",
@@ -51,7 +51,7 @@ class LifelogMockService {
         "content": "Discussione del capitolo 3 del libro 1984.",
         "category": "Book Club",
         "recordingCount": 1,
-        "transcriptions": []
+        "transcripts": []
       },
       {
         "id": "log6",
@@ -60,7 +60,7 @@ class LifelogMockService {
         "content": "Analisi dei temi principali di Animal Farm.",
         "category": "Book Club",
         "recordingCount": 1,
-        "transcriptions": []
+        "transcripts": []
       },
       {
         "id": "log7",
@@ -69,7 +69,7 @@ class LifelogMockService {
         "content": "Discussione sul simbolismo nel romanzo.",
         "category": "Book Club",
         "recordingCount": 1,
-        "transcriptions": []
+        "transcripts": []
       }
     ]
   }

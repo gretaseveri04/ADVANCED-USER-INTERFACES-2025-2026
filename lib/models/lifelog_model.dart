@@ -6,7 +6,7 @@ class Lifelog {
   final String content;
   final String category;
   final int recordingCount;
-  final List<String> transcriptions;
+  final List<String> transcripts;
 
   Lifelog({
     required this.id,
@@ -15,7 +15,7 @@ class Lifelog {
     required this.content,
     required this.category,
     required this.recordingCount,
-    required this.transcriptions,
+    required this.transcripts,
   });
 
   // Factory per creare un Lifelog da JSON
@@ -27,7 +27,7 @@ class Lifelog {
       content: json['content'] as String,
       category: json['category'] as String,
       recordingCount: json['recordingCount'] as int,
-      transcriptions: List<String>.from(json['transcriptions']),
+      transcripts: List<String>.from(json['transcripts']),
     );
   }
 
@@ -40,7 +40,7 @@ class Lifelog {
       'content': content,
       'category': category,
       'recordingCount': recordingCount,
-      'transcriptions': transcriptions,
+      'transcripts': transcripts,
     };
   }
 }

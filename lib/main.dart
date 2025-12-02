@@ -5,9 +5,9 @@ import 'package:limitless_app/ui/auth/login_screen.dart';
 import 'package:limitless_app/ui/calendar/calendar_screen.dart';
 import 'package:limitless_app/ui/chat/chat_screen.dart';
 import 'package:limitless_app/ui/main_layout.dart';
-import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
-import 'package:limitless_app/ui/transcription/transcription_screen.dart';
-import 'package:limitless_app/ui/transcription/transcription_detail_screen.dart';
+import 'package:limitless_app/ui/transcript/lifelog_screen.dart';
+import 'package:limitless_app/ui/transcript/transcripts_screen.dart';
+import 'package:limitless_app/ui/transcript/transcript_detail_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
@@ -43,14 +43,14 @@ class MyApp extends StatelessWidget {
         '/lifelog': (_) => const LifelogScreen(),
         '/chat': (_) => const ChatScreen(),
         '/calendar': (_) => const CalendarScreen(),
-        '/transcriptionDetail': (_) => const TranscriptionDetailScreen(),
+        '/transcriptDetail': (_) => const TranscriptDetailScreen(),
       },
 
       onGenerateRoute: (settings) {
         if (settings.name == '/transcription') {
           final lifelog = settings.arguments as Lifelog;
           return MaterialPageRoute(
-            builder: (_) => TranscriptionScreen(lifelog: lifelog),
+            builder: (_) => TranscriptScreen(lifelog: lifelog),
             settings: settings,
           );
         }
