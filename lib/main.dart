@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:limitless_app/config/keys.dart';
 import 'package:limitless_app/models/lifelog_model.dart';
 import 'package:limitless_app/ui/auth/login_screen.dart';
+import 'package:limitless_app/ui/calendar/calendar_screen.dart';
 import 'package:limitless_app/ui/chat/chat_screen.dart';
 import 'package:limitless_app/ui/main_layout.dart';
 import 'package:limitless_app/ui/transcription/lifelog_screen.dart';
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
         '/home': (_) => const MainLayout(),
         '/lifelog': (_) => const LifelogScreen(),
         '/chat': (_) => const ChatScreen(),
+        '/calendar': (_) => const CalendarScreen(),
         '/transcriptionDetail': (_) => const TranscriptionDetailScreen(),
       },
 

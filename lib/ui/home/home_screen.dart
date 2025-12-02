@@ -1,10 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:limitless_app/core/services/calendar_mock_service.dart';
+import 'package:limitless_app/models/calendar_event_model.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final CalendarMockService _calendarService = CalendarMockService();
+  List<CalendarEvent> _eventsToday = [];
+  late String _todayLabel;
+
+  @override
+  void initState() {
+    super.initState();
+    _todayLabel = DateFormat.yMMMMd().format(DateTime.now());
+    _loadEvents(); 
+  }
+
+  void _loadEvents() {
+    setState(() {
+      _eventsToday = _calendarService.getEventsForDay(DateTime.now());
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // NESSUNA BottomNavigationBar qui, è gestita da MainLayout
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
       body: SafeArea(
@@ -15,11 +41,11 @@ class HomeScreen extends StatelessWidget {
             children: [
               _buildHeader(),
               const SizedBox(height: 25),
-              _buildUserInfo(),
+              _buildUserInfo(_todayLabel),
               const SizedBox(height: 25),
-              _buildCalendarCard(),
+              _buildCalendarCard(context),
               const SizedBox(height: 25),
-              _buildTodoList(),
+              _buildTodoList(_eventsToday),
               const SizedBox(height: 25),
               _buildRecordSection(),
             ],
@@ -48,8 +74,10 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               child: Image.asset(
-                'assets/images/logo.png',
+                'assets/images/logo.png', 
                 width: 30,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.dashboard, color: Colors.deepPurple),
               ),
             ),
             const SizedBox(width: 10),
@@ -60,7 +88,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         const CircleAvatar(
-          radius: 46,
+          radius: 26, 
           backgroundColor: Colors.white,
           child: Text(
             '😊',
@@ -71,57 +99,65 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserInfo() {
+  Widget _buildUserInfo(String todayLabel) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
+      children: [
+        const Text(
           "YOUR NAME",
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
-          "today: November 25, 2025",
-          style: TextStyle(fontSize: 14, color: Colors.grey),
+          "today: $todayLabel",
+          style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
     );
   }
 
-  Widget _buildCalendarCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F1F5),
-              borderRadius: BorderRadius.circular(14),
+  Widget _buildCalendarCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.pushNamed(context, '/calendar');
+        _loadEvents();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F1F5),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.calendar_month, size: 30),
             ),
-            child: const Icon(Icons.calendar_month, size: 30),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Text(
-              "your calendar",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                "your calendar",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios, size: 18)
-        ],
+            const Icon(Icons.arrow_forward_ios, size: 18)
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTodoList() {
+  Widget _buildTodoList(List<CalendarEvent> eventsToday) {
+    final items = eventsToday;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -131,22 +167,43 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 90,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _todoCard("9:30 am", "team meeting"),
-              _todoCard("1:45 pm", "co-work session"),
-            ],
-          ),
+          height: 110, 
+          child: items.isEmpty
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "No events scheduled for today.\nEnjoy your free time! 🎉",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final e = items[index];
+                    return _todoCard(
+                      e.startTime,
+                      e.title,
+                      e.aiSuggestion, 
+                    );
+                  },
+                ),
         ),
       ],
     );
   }
 
-  Widget _todoCard(String time, String task) {
+  Widget _todoCard(String time, String task, String suggestion) {
     return Container(
-      width: 150,
+      width: 160,
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -155,10 +212,35 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(time, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            time, 
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF7F7CFF)
+            )
+          ),
           const SizedBox(height: 8),
-          Text(task, style: const TextStyle(color: Colors.black54)),
+          Text(
+            task, 
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600
+            )
+          ),
+          if (suggestion.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome, size: 12, color: Colors.orange),
+                const SizedBox(width: 4),
+                const Text("AI Tip", style: TextStyle(fontSize: 10, color: Colors.grey))
+              ],
+            )
+          ]
         ],
       ),
     );
@@ -197,6 +279,13 @@ class HomeScreen extends StatelessWidget {
                     colors: [Color(0xFFFFA8C9), Color(0xFFAEC9FF)],
                   ),
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFA8C9).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Center(
                   child: Row(
