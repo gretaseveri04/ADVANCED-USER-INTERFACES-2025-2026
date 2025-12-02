@@ -2,6 +2,7 @@ import 'dart:io'; // Necessario per gestire i file
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart'; // Necessario per scegliere la foto
+import 'package:limitless_app/core/services/chat_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -129,28 +130,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Aggiorna i dati testuali su Supabase
   Future<void> _updateProfile() async {
     setState(() => _isLoading = true);
     try {
       final user = _supabase.auth.currentUser;
-      final currentMeta = user?.userMetadata ?? {};
+      if (user == null) return;
 
+      final company = _companyController.text.trim();
+      final name = _nameController.text.trim();
+      final surname = _surnameController.text.trim();
+
+      // 1. Aggiorna Metadata (per la sessione corrente)
       final updates = UserAttributes(
         data: {
-          'name': _nameController.text.trim(),
-          'surname': _surnameController.text.trim(),
-          'company': _companyController.text.trim(),
-          'role': _locationController.text.trim(), // Salviamo la posizione come ruolo
-          'phone': _phoneController.text.trim(),   // Aggiungiamo il telefono ai metadata
+          ...user.userMetadata ?? {},
+          'name': name,
+          'surname': surname,
+          'company': company,
+          'role': _locationController.text.trim(),
+          'phone': _phoneController.text.trim(),
         },
       );
-
       await _supabase.auth.updateUser(updates);
+
+      // 2. Aggiorna Tabella Pubblica 'profiles' (per farti trovare dagli altri)
+      await _supabase.from('profiles').upsert({
+        'id': user.id,
+        'first_name': name,
+        'last_name': surname,
+        'company': company,
+        'email': user.email,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // 3. Logica "Social": Crea/Aggiorna chat aziendale
+      // Chiamiamo il servizio chat (assicurati di aver importato ChatService)
+      // Nota: Potresti dover aggiungere: import 'package:limitless_app/core/services/chat_service.dart';
+      await ChatService().syncCompanyChat(company);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profilo aggiornato con successo!')),
+          const SnackBar(content: Text('Profilo aggiornato e chat aziendale sincronizzata!')),
         );
       }
     } catch (e) {

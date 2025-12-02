@@ -1,69 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:limitless_app/models/conversation_model.dart';
-
-// Modello locale per i messaggi di questa view
-class MessageBubble {
-  final String text;
-  final bool isMe;
-  final String time;
-
-  MessageBubble({
-    required this.text, 
-    required this.isMe, 
-    required this.time
-  });
-}
+// Importa i modelli e servizi reali
+import 'package:limitless_app/models/chat_models.dart';
+import 'package:limitless_app/core/services/chat_service.dart';
 
 class ConversationScreen extends StatefulWidget {
-  final Conversation conversation;
+  final String chatId;
+  final String chatName;
 
-  const ConversationScreen({super.key, required this.conversation});
+  // Costruttore aggiornato per ricevere ID e Nome della chat reale
+  const ConversationScreen({
+    super.key, 
+    required this.chatId, 
+    required this.chatName
+  });
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
 }
 
 class _ConversationScreenState extends State<ConversationScreen> {
+  final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<MessageBubble> _messages = [];
 
-  @override
-  void initState() {
-    super.initState();
-    // Aggiungo il messaggio "finto" iniziale per contesto, basato sulla lista
-    _messages.add(MessageBubble(
-      text: widget.conversation.lastMessage.contains(':') 
-          ? widget.conversation.lastMessage.split(':')[1].trim() // Pulisce "Nome: Messaggio"
-          : widget.conversation.lastMessage,
-      isMe: false,
-      time: widget.conversation.time,
-    ));
-  }
-
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _messages.add(MessageBubble(
-        text: text,
-        isMe: true,
-        time: "Now",
-      ));
-    });
-    _controller.clear();
-    
-    // Auto-scroll
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    _controller.clear(); // Pulisci subito per reattività
+
+    try {
+      // Invia messaggio vero a Supabase
+      await _chatService.sendMessage(widget.chatId, text);
+      // Non serve aggiungere manualmente alla lista locale, lo Stream lo farà da solo!
+      
+      // Scrolla in basso (opzionale, lo StreamBuilder gestisce il reverse)
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore invio: $e")));
+    }
   }
 
   @override
@@ -83,30 +57,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
               radius: 16,
               backgroundColor: Colors.deepPurple,
               child: Text(
-                widget.conversation.name[0], 
+                widget.chatName.isNotEmpty ? widget.chatName[0].toUpperCase() : "?", 
                 style: const TextStyle(color: Colors.white, fontSize: 14)
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.conversation.name,
-                    style: const TextStyle(
-                      color: Colors.black, 
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (widget.conversation.isOnline)
-                    const Text(
-                      "Online",
-                      style: TextStyle(color: Colors.green, fontSize: 12),
-                    ),
-                ],
+              child: Text(
+                widget.chatName,
+                style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -118,13 +78,36 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ),
       body: Column(
         children: [
+          // ZONA MESSAGGI (STREAM REALE)
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return _buildBubble(_messages[index]);
+            child: StreamBuilder<List<ChatMessage>>(
+              stream: _chatService.getMessagesStream(widget.chatId),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text("Errore caricamento: ${snapshot.error}"));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final messages = snapshot.data!;
+                
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text("Nessun messaggio.\nScrivi il primo!", 
+                    textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                  );
+                }
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  reverse: true, // I messaggi più nuovi sono in "basso" (indice 0 della lista stream)
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    return _buildBubble(messages[index]);
+                  },
+                );
               },
             ),
           ),
@@ -134,20 +117,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  Widget _buildBubble(MessageBubble msg) {
+  Widget _buildBubble(ChatMessage msg) {
+    // msg.isMine è calcolato nel modello ChatMessage.fromJson
+    final isMe = msg.isMine; 
+
     return Align(
-      alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(12),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
         decoration: BoxDecoration(
-          color: msg.isMe ? Colors.deepPurple : Colors.white,
+          color: isMe ? Colors.deepPurple : Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
-            bottomLeft: msg.isMe ? const Radius.circular(16) : const Radius.circular(4),
-            bottomRight: msg.isMe ? const Radius.circular(4) : const Radius.circular(16),
+            bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
           ),
           boxShadow: [
             BoxShadow(
@@ -158,9 +144,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ],
         ),
         child: Text(
-          msg.text,
+          msg.content,
           style: TextStyle(
-            color: msg.isMe ? Colors.white : Colors.black87,
+            color: isMe ? Colors.white : Colors.black87,
             fontSize: 16,
           ),
         ),
@@ -187,9 +173,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
               ),
               child: TextField(
                 controller: _controller,
+                // Invia con Enter
                 onSubmitted: (_) => _sendMessage(),
                 decoration: const InputDecoration(
-                  hintText: "Type a message...",
+                  hintText: "Scrivi un messaggio...",
                   border: InputBorder.none,
                 ),
               ),
