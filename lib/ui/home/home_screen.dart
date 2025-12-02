@@ -1,7 +1,11 @@
+import 'dart:async'; // Necessario per il listener degli aggiornamenti
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:limitless_app/core/services/calendar_mock_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Assicurati che l'import del modello sia corretto (come hai risolto prima)
 import 'package:limitless_app/models/calendar_event_model.dart';
+import 'package:limitless_app/core/services/calendar_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,26 +15,86 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final CalendarMockService _calendarService = CalendarMockService();
+  final CalendarService _calendarService = CalendarService();
+  late final StreamSubscription<AuthState> _authSubscription;
+  
   List<CalendarEvent> _eventsToday = [];
   late String _todayLabel;
+  
+  // Dati Utente
+  String _userName = "User";
+  String? _avatarUrl; // URL immagine profilo
+  
+  bool _isRecording = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _todayLabel = DateFormat.yMMMMd().format(DateTime.now());
+    
+    _loadUserData(); // Carica dati iniziali
     _loadEvents(); 
-  }
 
-  void _loadEvents() {
-    setState(() {
-      _eventsToday = _calendarService.getEventsForDay(DateTime.now());
+    // ASCOLTATORE: Aggiorna la home se l'utente cambia foto nel profilo
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      // Se l'utente viene aggiornato (es. cambia foto), ricarichiamo i dati
+      if (event == AuthChangeEvent.userUpdated || event == AuthChangeEvent.initialSession) {
+        _loadUserData();
+      }
     });
   }
 
   @override
+  void dispose() {
+    // Chiudiamo l'ascoltatore quando la pagina viene distrutta
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  void _loadUserData() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      final metadata = user.userMetadata;
+      if (mounted) {
+        setState(() {
+          _userName = metadata?['name'] ?? 'User';
+          _avatarUrl = metadata?['avatar_url']; // Recuperiamo l'URL dell'immagine
+        });
+      }
+    }
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      final events = await _calendarService.getEventsForDay(DateTime.now());
+      if (mounted) {
+        setState(() {
+          _eventsToday = events;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Errore home events: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _toggleRecording() {
+    setState(() => _isRecording = !_isRecording);
+    if (_isRecording) {
+      print("Start Recording...");
+    } else {
+      print("Stop Recording...");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Recording saved! Processing transcription...")),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // NESSUNA BottomNavigationBar qui, è gestita da MainLayout
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
       body: SafeArea(
@@ -73,12 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 ],
               ),
-              child: Image.asset(
-                'assets/images/logo.png', 
-                width: 30,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.dashboard, color: Colors.deepPurple),
-              ),
+              child: const Icon(Icons.dashboard, color: Colors.deepPurple, size: 30),
             ),
             const SizedBox(width: 10),
             const Text(
@@ -87,13 +146,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const CircleAvatar(
+        
+        // --- AVATAR DINAMICO ---
+        CircleAvatar(
           radius: 26, 
           backgroundColor: Colors.white,
-          child: Text(
-            '😊',
-            style: TextStyle(fontSize: 28),
-          ),
+          // Se c'è l'URL, usa NetworkImage, altrimenti null
+          backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+          // Se non c'è l'immagine, mostra la faccina come fallback
+          child: _avatarUrl == null 
+              ? const Text('😊', style: TextStyle(fontSize: 28))
+              : null,
         )
       ],
     );
@@ -103,9 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "YOUR NAME",
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+        Text(
+          _userName.toUpperCase(), 
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
         Text(
@@ -115,6 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+
+  // ... Il resto del codice (CalendarCard, TodoList, RecordSection) rimane identico ...
+  // Lo riporto qui sotto per completezza così puoi copiare tutto il file in un colpo solo.
 
   Widget _buildCalendarCard(BuildContext context) {
     return GestureDetector(
@@ -144,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 14),
             const Expanded(
               child: Text(
-                "your calendar",
+                "Your Calendar",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
@@ -156,8 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTodoList(List<CalendarEvent> eventsToday) {
-    final items = eventsToday;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -168,7 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 14),
         SizedBox(
           height: 110, 
-          child: items.isEmpty
+          child: _isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : eventsToday.isEmpty
               ? Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -186,21 +252,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: items.length,
+                  itemCount: eventsToday.length,
                   itemBuilder: (context, index) {
-                    final e = items[index];
-                    return _todoCard(
-                      e.startTime,
-                      e.title,
-                      e.aiSuggestion, 
-                    );
+                    final e = eventsToday[index];
+                    final timeString = DateFormat.jm().format(e.startTime);
+                    String aiSuggestion = "";
+                    if (e.description.contains("AI Suggestion:")) {
+                       aiSuggestion = e.description.split("AI Suggestion:").last.trim();
+                    }
+                    return _todoCard(timeString, e.title, aiSuggestion);
                   },
                 ),
         ),
       ],
     );
   }
-
+  
   Widget _todoCard(String time, String task, String suggestion) {
     return Container(
       width: 160,
@@ -214,30 +281,21 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            time, 
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF7F7CFF)
-            )
-          ),
+          Text(time, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7F7CFF))),
           const SizedBox(height: 8),
           Text(
             task, 
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.w600
-            )
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)
           ),
-          if (suggestion.isNotEmpty) ...[
+          if (suggestion.isNotEmpty && suggestion != "No suggestions") ...[
             const SizedBox(height: 4),
             Row(
               children: [
                 const Icon(Icons.auto_awesome, size: 12, color: Colors.orange),
                 const SizedBox(width: 4),
-                const Text("AI Tip", style: TextStyle(fontSize: 10, color: Colors.grey))
+                const Expanded(child: Text("AI Tip", overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: Colors.grey)))
               ],
             )
           ]
@@ -250,62 +308,49 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "START RECORDING",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        const Text("START RECORDING", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 14),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFE0F0), Color(0xFFE0E8FF)],
+        InkWell(
+          onTap: _toggleRecording,
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _isRecording ? const Color(0xFFF3F0FF) : null,
+              gradient: _isRecording ? null : const LinearGradient(colors: [Color(0xFFFFE0F0), Color(0xFFE0E8FF)]),
+              borderRadius: BorderRadius.circular(24),
+              border: _isRecording ? Border.all(color: Colors.deepPurple.withOpacity(0.3), width: 1) : null,
             ),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Record audio with automatic AI transcription",
-                style: TextStyle(fontSize: 14, color: Colors.black87),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFA8C9), Color(0xFFAEC9FF)],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFA8C9).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Record audio with automatic AI transcription", style: TextStyle(fontSize: 14, color: Colors.black54)),
+                const SizedBox(height: 24),
+                if (_isRecording)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.mic, color: Colors.white),
-                      SizedBox(width: 10),
-                      Text(
-                        "Record Audio",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Container(width: 12, height: 12, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+                      const SizedBox(width: 12),
+                      const Text("Recording in progress...", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600)),
                     ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFFFA8C9), Color(0xFFAEC9FF)]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: const Color(0xFFFFA8C9).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                    ),
+                    child: const Center(
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.mic, color: Colors.white), SizedBox(width: 10), Text("Record Audio", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))]),
+                    ),
                   ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

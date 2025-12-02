@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:limitless_app/core/services/calendar_mock_service.dart';
+// Assicurati che questi import puntino ai file corretti che hai creato prima
+import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/models/calendar_event_model.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -11,26 +12,42 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  final CalendarMockService _service = CalendarMockService();
+  // Usa il servizio reale collegato a Supabase
+  final CalendarService _service = CalendarService();
 
-  late Map<DateTime, List<CalendarEvent>> _eventsByDay;
+  Map<DateTime, List<CalendarEvent>> _eventsByDay = {};
   late DateTime _focusedMonth;
   late DateTime _selectedDay;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    final events = _service.getEvents();
-    _eventsByDay = _groupByDay(events);
-
     _selectedDay = _normalizeDate(DateTime.now());
     _focusedMonth = DateTime(_selectedDay.year, _selectedDay.month);
+    _loadEvents();
+  }
+
+  /// Carica gli eventi dal Database Supabase
+  Future<void> _loadEvents() async {
+    setState(() => _isLoading = true);
+    try {
+      final events = await _service.getMyEvents();
+      setState(() {
+        _eventsByDay = _groupByDay(events);
+      });
+    } catch (e) {
+      debugPrint("Errore caricamento eventi: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Map<DateTime, List<CalendarEvent>> _groupByDay(List<CalendarEvent> events) {
     final map = <DateTime, List<CalendarEvent>>{};
     for (final event in events) {
-      final normalized = _normalizeDate(event.date);
+      // Usiamo startTime come data di riferimento
+      final normalized = _normalizeDate(event.startTime);
       map.putIfAbsent(normalized, () => []).add(event);
     }
     return map;
@@ -41,7 +58,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   List<DateTime> _daysInMonth(DateTime month) {
     final first = DateTime(month.year, month.month, 1);
-    final daysBefore = (first.weekday % 7); // Sunday = 0, Monday = 1 ...
+    final daysBefore = (first.weekday % 7); 
     final firstToShow = first.subtract(Duration(days: daysBefore));
 
     final last = DateTime(month.year, month.month + 1, 0);
@@ -65,7 +82,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final monthFormatter = DateFormat.yMMMM();
     final weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     final days = _daysInMonth(_focusedMonth);
-    final selectedEvents = _eventsByDay[_selectedDay] ?? const [];
+    final selectedEvents = _eventsByDay[_selectedDay] ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
@@ -122,190 +139,201 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Text(
-                'CALENDAR',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Text(
+                      'CALENDAR',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
                     ),
-                  ],
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            monthFormatter.format(_focusedMonth),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  ),
+                  // CALENDAR GRID
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                          Row(
-                            children: [
-                              _circleIconButton(
-                                Icons.chevron_left,
-                                onTap: () {
-                                  setState(() {
-                                    _focusedMonth = DateTime(
-                                      _focusedMonth.year,
-                                      _focusedMonth.month - 1,
-                                    );
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 12),
-                              _circleIconButton(
-                                Icons.chevron_right,
-                                onTap: () {
-                                  setState(() {
-                                    _focusedMonth = DateTime(
-                                      _focusedMonth.year,
-                                      _focusedMonth.month + 1,
-                                    );
-                                  });
-                                },
-                              ),
-                            ],
-                          )
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          for (final label in weekdayLabels)
-                            Expanded(
-                              child: Center(
-                                child: Text(
-                                  label,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  monthFormatter.format(_focusedMonth),
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
+                                Row(
+                                  children: [
+                                    _circleIconButton(
+                                      Icons.chevron_left,
+                                      onTap: () {
+                                        setState(() {
+                                          _focusedMonth = DateTime(
+                                            _focusedMonth.year,
+                                            _focusedMonth.month - 1,
+                                          );
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(width: 12),
+                                    _circleIconButton(
+                                      Icons.chevron_right,
+                                      onTap: () {
+                                        setState(() {
+                                          _focusedMonth = DateTime(
+                                            _focusedMonth.year,
+                                            _focusedMonth.month + 1,
+                                          );
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                )
+                              ],
                             ),
-                        ],
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                for (final label in weekdayLabels)
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: days.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 7,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 4,
+                              ),
+                              itemBuilder: (context, index) {
+                                final day = days[index];
+                                final isCurrentMonth =
+                                    day.month == _focusedMonth.month;
+                                final isSelected = _isSameDay(day, _selectedDay);
+                                final events = _eventsByDay[_normalizeDate(day)] ?? [];
+                                return _buildDayCell(
+                                  day: day,
+                                  isCurrentMonth: isCurrentMonth,
+                                  isSelected: isSelected,
+                                  hasEvents: events.isNotEmpty,
+                                  eventCount: events.length,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      GridView.builder(
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // EVENTS HEADER
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'EVENTS - ${DateFormat('MMMM d').format(_selectedDay).toUpperCase()}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F1F5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${selectedEvents.length} ${selectedEvents.length == 1 ? 'event' : 'events'}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // EVENTS LIST
+                  selectedEvents.isEmpty 
+                    ? const Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text("No events for this day.", style: TextStyle(color: Colors.grey)),
+                      )
+                    : ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: days.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: selectedEvents.length,
                         itemBuilder: (context, index) {
-                          final day = days[index];
-                          final isCurrentMonth =
-                              day.month == _focusedMonth.month;
-                          final isSelected = _isSameDay(day, _selectedDay);
-                          final events = _eventsByDay[_normalizeDate(day)] ?? [];
-                          return _buildDayCell(
-                            day: day,
-                            isCurrentMonth: isCurrentMonth,
-                            isSelected: isSelected,
-                            hasEvents: events.isNotEmpty,
-                            eventCount: events.length,
-                          );
+                          final event = selectedEvents[index];
+                          return _EventCard(event: event);
                         },
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'EVENTS - ${DateFormat('MMMM d').format(_selectedDay).toUpperCase()}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F1F5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      '${selectedEvents.length} ${selectedEvents.length == 1 ? 'event' : 'events'}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: selectedEvents.length,
-              itemBuilder: (context, index) {
-                final event = selectedEvents[index];
-                return _EventCard(event: event);
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Future<void> _openAddEventSheet() async {
     final titleController = TextEditingController();
-    final timeController = TextEditingController(text: '10:00 AM');
-    final durationController = TextEditingController(text: '1h');
     final locationController = TextEditingController(text: 'Conference Room A');
-    final peopleController = TextEditingController(text: '5');
     final suggestionController = TextEditingController(
       text: 'Let the assistant prepare a summary and key action items.',
     );
+    
+    // Default time: 10:00 AM
+    TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
+    // Default duration: 1 hour
+    int durationHours = 1;
 
-    DateTime selectedDate = _selectedDay;
+    DateTime currentSelectedDate = _selectedDay;
 
     await showModalBottomSheet(
       context: context,
@@ -314,170 +342,187 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 16,
-            bottom: bottomInset + 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Usa StatefulBuilder per aggiornare solo il bottom sheet (es. quando cambi data/ora)
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: bottomInset + 16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'New event',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'New event',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // DATE PICKER
+                    TextButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: currentSelectedDate,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setSheetState(() {
+                            currentSelectedDate = picked;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today, size: 18),
+                      label: Text(
+                        DateFormat.yMMMMd().format(currentSelectedDate),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    )
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _selectedDay = _normalizeDate(picked);
-                        _focusedMonth =
-                            DateTime(_selectedDay.year, _selectedDay.month);
-                      });
-                      selectedDate = _selectedDay;
-                    }
-                  },
-                  icon: const Icon(Icons.calendar_today, size: 18),
-                  label: Text(
-                    DateFormat.yMMMMd().format(selectedDate),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: timeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Start time',
-                          border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        // TIME PICKER
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: selectedTime,
+                              );
+                              if (time != null) {
+                                setSheetState(() => selectedTime = time);
+                              }
+                            },
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Start time',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(selectedTime.format(context)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // DURATION
+                        Expanded(
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Duration (hours)',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (val) {
+                              durationHours = int.tryParse(val) ?? 1;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: locationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Location',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: suggestionController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'AI suggestion',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          backgroundColor: const Color(0xFF7F7CFF),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () async {
+                          if (titleController.text.trim().isEmpty) return;
+                          
+                          // CREAZIONE DATA COMPLETA (Data + Ora)
+                          final startTime = DateTime(
+                            currentSelectedDate.year,
+                            currentSelectedDate.month,
+                            currentSelectedDate.day,
+                            selectedTime.hour,
+                            selectedTime.minute,
+                          );
+                          
+                          final endTime = startTime.add(Duration(hours: durationHours));
+
+                          // Salviamo Location e AI suggestion nella descrizione
+                          // (Hack per usare la tabella SQL semplice)
+                          final fullDescription = 
+                              "Location: ${locationController.text}\nAI Suggestion: ${suggestionController.text}";
+
+                          final event = CalendarEvent(
+                            title: titleController.text.trim(),
+                            description: fullDescription,
+                            startTime: startTime,
+                            endTime: endTime,
+                            isAllDay: false,
+                          );
+
+                          // Salva su Supabase
+                          await _service.addEvent(event);
+
+                          // Chiudi e ricarica
+                          if (mounted) {
+                             Navigator.of(context).pop();
+                             _loadEvents(); // Ricarica dalla rete
+                          }
+                        },
+                        child: const Text(
+                          'Add event',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: durationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Duration',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Location',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: peopleController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'People',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: suggestionController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'AI suggestion',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      backgroundColor: const Color(0xFF7F7CFF),
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () {
-                      if (titleController.text.trim().isEmpty) return;
-                      final people =
-                          int.tryParse(peopleController.text.trim()) ?? 1;
-                      final event = CalendarEvent(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        title: titleController.text.trim(),
-                        date: selectedDate,
-                        startTime: timeController.text.trim(),
-                        duration: durationController.text.trim(),
-                        location: locationController.text.trim(),
-                        peopleCount: people,
-                        category: 'WORK',
-                        aiSuggestion: suggestionController.text.trim(),
-                      );
-                      _service.addEvent(event);
-
-                      final normalized = _normalizeDate(selectedDate);
-                      setState(() {
-                        _eventsByDay
-                            .putIfAbsent(normalized, () => [])
-                            .add(event);
-                        _selectedDay = normalized;
-                        _focusedMonth =
-                            DateTime(normalized.year, normalized.month);
-                      });
-
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text(
-                      'Add event',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }
         );
       },
     );
@@ -580,7 +625,24 @@ class _EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final suggestion = event.aiSuggestion;
+    // Estraiamo Location e AI Suggestion dalla descrizione (se le abbiamo salvate lì)
+    String location = "TBD";
+    String aiSuggestion = "No suggestions";
+    
+    // Logica semplice di parsing della descrizione che abbiamo concatenato prima
+    final lines = event.description.split('\n');
+    for (var line in lines) {
+      if (line.startsWith("Location:")) location = line.replaceAll("Location:", "").trim();
+      if (line.startsWith("AI Suggestion:")) aiSuggestion = line.replaceAll("AI Suggestion:", "").trim();
+    }
+    
+    // Calcolo durata
+    final duration = event.endTime.difference(event.startTime);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final durationString = "${hours}h ${minutes > 0 ? '${minutes}m' : ''}";
+    
+    final startTimeString = DateFormat.jm().format(event.startTime);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -636,7 +698,7 @@ class _EventCard extends StatelessWidget {
                               size: 16, color: Colors.grey),
                           const SizedBox(width: 4),
                           Text(
-                            '${event.startTime} · ${event.duration}',
+                            '$startTimeString · $durationString',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -647,22 +709,7 @@ class _EventCard extends StatelessWidget {
                               size: 16, color: Colors.grey),
                           const SizedBox(width: 4),
                           Text(
-                            event.location,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.group_outlined,
-                              size: 16, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${event.peopleCount} people',
+                            location,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -675,39 +722,40 @@ class _EventCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7E5),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.auto_awesome,
-                    color: Color(0xFFF1A600),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'AI Suggestion: $suggestion',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
+            if (aiSuggestion.isNotEmpty && aiSuggestion != "No suggestions") ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome,
+                      color: Color(0xFFF1A600),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'AI Suggestion: $aiSuggestion',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ]
           ],
         ),
       ),
     );
   }
-
 }
