@@ -1,7 +1,7 @@
-import 'dart:io'; // Necessario per gestire i file
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart'; // Necessario per scegliere la foto
+import 'package:image_picker/image_picker.dart'; 
 import 'package:limitless_app/core/services/chat_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,17 +13,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _supabase = Supabase.instance.client;
-  final ImagePicker _picker = ImagePicker(); // Istanza per scegliere le foto
+  final ImagePicker _picker = ImagePicker(); 
 
-  // Indice del tab selezionato
   int _selectedTabIndex = 0;
   bool _isLoading = false;
-  bool _isUploadingImage = false; // Stato per lo spinner durante l'upload
+  bool _isUploadingImage = false; 
 
-  // Dati utente
-  String? _avatarUrl; // URL dell'immagine profilo
+  String? _avatarUrl; 
 
-  // Controller
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -31,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _companyController = TextEditingController();
   final _locationController = TextEditingController();
 
-  // Stato Switch (Settings)
   bool _dailySummary = true;
   bool _newTranscriptions = true;
   bool _chatMentions = true;
@@ -45,7 +41,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserProfile();
   }
 
-  /// Carica i dati reali da Supabase Auth Metadata
   void _loadUserProfile() {
     final user = _supabase.auth.currentUser;
     if (user != null) {
@@ -60,71 +55,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _locationController.text = metadata['role'] ?? metadata['location'] ?? '';
         _phoneController.text = metadata['phone'] ?? '';
         
-        // Carica l'URL dell'avatar se esiste
         _avatarUrl = metadata['avatar_url'];
       });
     }
   }
 
-  /// Logica per scegliere e caricare l'immagine
-  /// Logica per scegliere e caricare l'immagine (CORRETTA PER WEB E MOBILE)
   Future<void> _uploadProfileImage() async {
     try {
-      // 1. Scegli l'immagine dalla galleria
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image == null) return; // L'utente ha annullato
+      if (image == null) return;
 
       setState(() => _isUploadingImage = true);
 
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
-      // 2. Leggi i bytes del file
       final imageBytes = await image.readAsBytes();
-      
-      // --- MODIFICA FONDAMENTALE QUI ---
-      // Usiamo 'name' invece di 'path' per ottenere l'estensione corretta anche su Web
       final fileExt = image.name.split('.').last; 
-      
-      // Genera un nome file pulito
       final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final filePath = fileName; 
 
-      // 3. Carica su Supabase Storage (Bucket 'avatars')
       await _supabase.storage.from('avatars').uploadBinary(
         filePath,
         imageBytes,
-        fileOptions: FileOptions(
-          contentType: 'image/$fileExt', // Ora questo sarà corretto (es. image/png)
-          upsert: true
-        ),
+        fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: true),
       );
 
-      // 4. Ottieni l'URL pubblico
       final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      // 5. Aggiorna i metadati dell'utente con il nuovo URL
       await _supabase.auth.updateUser(
         UserAttributes(data: { ...user.userMetadata ?? {}, 'avatar_url': imageUrl }),
       );
 
-      // 6. Aggiorna la UI
+      await _supabase.from('profiles').upsert({
+        'id': user.id,
+        'avatar_url': imageUrl,
+      });
+      await _supabase.from('profiles').update({
+        'avatar_url': imageUrl,
+      }).eq('id', user.id);
+
       setState(() {
         _avatarUrl = imageUrl;
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Immagine profilo aggiornata!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Immagine aggiornata!')));
       }
 
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore upload: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore upload: $e')));
     } finally {
       setState(() => _isUploadingImage = false);
     }
@@ -140,7 +120,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final name = _nameController.text.trim();
       final surname = _surnameController.text.trim();
 
-      // 1. Aggiorna Metadata (per la sessione corrente)
       final updates = UserAttributes(
         data: {
           ...user.userMetadata ?? {},
@@ -153,7 +132,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       await _supabase.auth.updateUser(updates);
 
-      // 2. Aggiorna Tabella Pubblica 'profiles' (per farti trovare dagli altri)
       await _supabase.from('profiles').upsert({
         'id': user.id,
         'first_name': name,
@@ -163,9 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'updated_at': DateTime.now().toIso8601String(),
       });
 
-      // 3. Logica "Social": Crea/Aggiorna chat aziendale
-      // Chiamiamo il servizio chat (assicurati di aver importato ChatService)
-      // Nota: Potresti dover aggiungere: import 'package:limitless_app/core/services/chat_service.dart';
       await ChatService().syncCompanyChat(company);
 
       if (mounted) {
@@ -199,7 +174,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Otteniamo le iniziali per l'avatar dinamico
     final String initials = (_nameController.text.isNotEmpty && _surnameController.text.isNotEmpty)
         ? "${_nameController.text[0]}${_surnameController.text[0]}".toUpperCase()
         : "MR";
@@ -243,7 +217,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 30),
-                    // HEADER DINAMICO
                     _buildHeaderInfo(initials, fullName),
                     const SizedBox(height: 20),
                     
@@ -285,13 +258,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Stack(
           children: [
-            // AVATAR CONTAINER
             Container(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                // Se c'è l'immagine e non stiamo caricando, mostra l'immagine
                 image: (_avatarUrl != null && !_isUploadingImage)
                   ? DecorationImage(
                       image: NetworkImage(_avatarUrl!),
@@ -319,15 +290,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         )
-                      : null, // Se c'è l'immagine, il child è null perché usa DecorationImage
+                      : null, 
             ),
             
-            // PULSANTE FOTOCAMERA
             Positioned(
               right: 0,
               bottom: 0,
               child: GestureDetector(
-                onTap: _uploadProfileImage, // Clicca qui per caricare
+                onTap: _uploadProfileImage, 
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: const BoxDecoration(
@@ -420,7 +390,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- SEZIONE 1: ACCOUNT (Collegata ai dati veri) ---
   Widget _buildAccountSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 12),
         _buildTextField("Cognome", _surnameController),
         const SizedBox(height: 12),
-        _buildTextField("Email", _emailController, icon: Icons.email_outlined, readOnly: true), // Email read-only
+        _buildTextField("Email", _emailController, icon: Icons.email_outlined, readOnly: true), 
         const SizedBox(height: 12),
         _buildTextField("Telefono", _phoneController, icon: Icons.phone_outlined),
         const SizedBox(height: 12),
@@ -457,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton(
-                onPressed: _loadUserProfile, // Il tasto Annulla ricarica i dati originali
+                onPressed: _loadUserProfile, 
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -483,7 +452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: InputDecoration(
             prefixIcon: icon != null ? Icon(icon, size: 20, color: Colors.grey) : null,
             filled: true,
-            fillColor: readOnly ? const Color(0xFFF5F5F5) : const Color(0xFFF1F1F5), // Leggermente diverso se read-only
+            fillColor: readOnly ? const Color(0xFFF5F5F5) : const Color(0xFFF1F1F5), 
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -495,8 +464,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- LE ALTRE SEZIONI RESTANO UGUALI AL MOCKUP ---
-  
   Widget _buildNotificationsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,8 +546,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           "Attiva trascrizione automatica per tutte le rec.",
           _autoTranscription,
           (v) => setState(() => _autoTranscription = v),
-        ),
-         // ... resto dei widget privacy come prima ...
+        ),  
       ],
     );
   }

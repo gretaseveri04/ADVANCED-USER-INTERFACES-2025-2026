@@ -1,4 +1,4 @@
-/// classe obj Lifelog permette di trasformare i dati json in oggetti dart
+
 class Lifelog {
   final String id;
   final String title;
@@ -18,7 +18,6 @@ class Lifelog {
     required this.transcripts,
   });
 
-  // Factory per creare un Lifelog da JSON
   factory Lifelog.fromJson(Map<String, dynamic> json) {
     return Lifelog(
       id: json['id'] as String,
@@ -31,7 +30,6 @@ class Lifelog {
     );
   }
 
-  // Metodo per convertire in JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,

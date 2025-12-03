@@ -2,12 +2,14 @@ class ChatRoom {
   final String id;
   final String? name;
   final bool isGroup;
+  final String? avatarUrl; 
   final DateTime createdAt;
 
   ChatRoom({
     required this.id,
     this.name,
     required this.isGroup,
+    this.avatarUrl, 
     required this.createdAt,
   });
 
@@ -16,6 +18,7 @@ class ChatRoom {
       id: json['id'],
       name: json['name'],
       isGroup: json['is_group'] ?? false,
+      avatarUrl: null, 
       createdAt: DateTime.parse(json['created_at']).toLocal(),
     );
   }
@@ -27,7 +30,7 @@ class ChatMessage {
   final String senderId;
   final String content;
   final DateTime createdAt;
-  final bool isMine; // Helper per la UI
+  final bool isMine;
 
   ChatMessage({
     required this.id,

@@ -34,7 +34,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
 
-      // login o main a seconda dello stato auth
       initialRoute: supabase.auth.currentSession == null ? '/login' : '/home',
 
       routes: {

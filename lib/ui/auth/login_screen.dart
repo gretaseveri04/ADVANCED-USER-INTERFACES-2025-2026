@@ -58,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // EMAIL
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F1F5),
@@ -76,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 15),
 
-              // PASSWORD
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F1F5),

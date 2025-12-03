@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// Assicurati che questi import puntino ai file corretti che hai creato prima
 import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/models/calendar_event_model.dart';
 
@@ -12,7 +11,6 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  // Usa il servizio reale collegato a Supabase
   final CalendarService _service = CalendarService();
 
   Map<DateTime, List<CalendarEvent>> _eventsByDay = {};
@@ -28,7 +26,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadEvents();
   }
 
-  /// Carica gli eventi dal Database Supabase
   Future<void> _loadEvents() async {
     setState(() => _isLoading = true);
     try {
@@ -46,7 +43,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, List<CalendarEvent>> _groupByDay(List<CalendarEvent> events) {
     final map = <DateTime, List<CalendarEvent>>{};
     for (final event in events) {
-      // Usiamo startTime come data di riferimento
       final normalized = _normalizeDate(event.startTime);
       map.putIfAbsent(normalized, () => []).add(event);
     }
@@ -157,7 +153,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                   ),
-                  // CALENDAR GRID
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
@@ -266,7 +261,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // EVENTS HEADER
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
@@ -299,7 +293,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // EVENTS LIST
                   selectedEvents.isEmpty 
                     ? const Padding(
                         padding: EdgeInsets.all(20.0),
@@ -328,9 +321,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       text: 'Let the assistant prepare a summary and key action items.',
     );
     
-    // Default time: 10:00 AM
     TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
-    // Default duration: 1 hour
     int durationHours = 1;
 
     DateTime currentSelectedDate = _selectedDay;
@@ -342,7 +333,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        // Usa StatefulBuilder per aggiornare solo il bottom sheet (es. quando cambi data/ora)
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -375,7 +365,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // DATE PICKER
                     TextButton.icon(
                       onPressed: () async {
                         final picked = await showDatePicker(
@@ -407,7 +396,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        // TIME PICKER
                         Expanded(
                           child: InkWell(
                             onTap: () async {
@@ -429,7 +417,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // DURATION
                         Expanded(
                           child: TextField(
                             keyboardType: TextInputType.number,
@@ -476,7 +463,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onPressed: () async {
                           if (titleController.text.trim().isEmpty) return;
                           
-                          // CREAZIONE DATA COMPLETA (Data + Ora)
                           final startTime = DateTime(
                             currentSelectedDate.year,
                             currentSelectedDate.month,
@@ -487,8 +473,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           
                           final endTime = startTime.add(Duration(hours: durationHours));
 
-                          // Salviamo Location e AI suggestion nella descrizione
-                          // (Hack per usare la tabella SQL semplice)
                           final fullDescription = 
                               "Location: ${locationController.text}\nAI Suggestion: ${suggestionController.text}";
 
@@ -500,13 +484,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             isAllDay: false,
                           );
 
-                          // Salva su Supabase
                           await _service.addEvent(event);
 
-                          // Chiudi e ricarica
                           if (mounted) {
                              Navigator.of(context).pop();
-                             _loadEvents(); // Ricarica dalla rete
+                             _loadEvents(); 
                           }
                         },
                         child: const Text(

@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  /// Login with email and password
   Future<AuthResponse> login(String email, String password) async {
     try {
       final response = await supabase.auth.signInWithPassword(
@@ -16,7 +15,6 @@ class AuthService {
     }
   }
 
-  /// Signup with custom metadata
   Future<AuthResponse> signup({
     required String email,
     required String password,
@@ -44,7 +42,6 @@ class AuthService {
     }
   }
 
-  /// Logout
   Future<void> logout() async {
     try {
       await supabase.auth.signOut();

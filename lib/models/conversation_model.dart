@@ -6,7 +6,7 @@ class Conversation {
   final int unreadCount;
   final bool isGroup;
   final bool isOnline;
-  final List<String> participants; // Utile per i gruppi
+  final List<String> participants; 
 
   Conversation({
     required this.id,

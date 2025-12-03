@@ -184,7 +184,6 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// Inputbar widget
 class _ChatInputField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;

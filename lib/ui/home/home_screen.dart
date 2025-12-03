@@ -1,9 +1,8 @@
-import 'dart:async'; // Necessario per il listener degli aggiornamenti
+import 'dart:async'; 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Assicurati che l'import del modello sia corretto (come hai risolto prima)
 import 'package:limitless_app/models/calendar_event_model.dart';
 import 'package:limitless_app/core/services/calendar_service.dart';
 
@@ -21,9 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CalendarEvent> _eventsToday = [];
   late String _todayLabel;
   
-  // Dati Utente
   String _userName = "User";
-  String? _avatarUrl; // URL immagine profilo
+  String? _avatarUrl; 
   
   bool _isRecording = false;
   bool _isLoading = true;
@@ -33,13 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _todayLabel = DateFormat.yMMMMd().format(DateTime.now());
     
-    _loadUserData(); // Carica dati iniziali
+    _loadUserData(); 
     _loadEvents(); 
 
-    // ASCOLTATORE: Aggiorna la home se l'utente cambia foto nel profilo
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
-      // Se l'utente viene aggiornato (es. cambia foto), ricarichiamo i dati
       if (event == AuthChangeEvent.userUpdated || event == AuthChangeEvent.initialSession) {
         _loadUserData();
       }
@@ -48,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    // Chiudiamo l'ascoltatore quando la pagina viene distrutta
     _authSubscription.cancel();
     super.dispose();
   }
@@ -60,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _userName = metadata?['name'] ?? 'User';
-          _avatarUrl = metadata?['avatar_url']; // Recuperiamo l'URL dell'immagine
+          _avatarUrl = metadata?['avatar_url']; 
         });
       }
     }
@@ -147,13 +142,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         
-        // --- AVATAR DINAMICO ---
         CircleAvatar(
           radius: 26, 
           backgroundColor: Colors.white,
-          // Se c'è l'URL, usa NetworkImage, altrimenti null
           backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-          // Se non c'è l'immagine, mostra la faccina come fallback
           child: _avatarUrl == null 
               ? const Text('😊', style: TextStyle(fontSize: 28))
               : null,
@@ -178,9 +170,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
-  // ... Il resto del codice (CalendarCard, TodoList, RecordSection) rimane identico ...
-  // Lo riporto qui sotto per completezza così puoi copiare tutto il file in un colpo solo.
 
   Widget _buildCalendarCard(BuildContext context) {
     return GestureDetector(

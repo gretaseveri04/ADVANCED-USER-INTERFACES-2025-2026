@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:limitless_app/models/lifelog_model.dart';
 
 class LifelogMockService {
-  // JSON mockup
   static const String _mockJsonData = '''
   {
     "lifelogs": [
@@ -75,7 +74,6 @@ class LifelogMockService {
   }
   ''';
 
-  // Ottiene tutti i lifelogs in modo sincrono
   LifelogResponse getLifelogs() {
     try {
       final Map<String, dynamic> jsonData = json.decode(_mockJsonData);
@@ -85,7 +83,6 @@ class LifelogMockService {
     }
   }
 
-  // Ottiene un singolo lifelog per ID
   Lifelog? getLifelogById(String id) {
     try {
       final response = getLifelogs();
@@ -98,7 +95,6 @@ class LifelogMockService {
     }
   }
 
-  // Filtra i lifelogs per categoria
   List<Lifelog> getLifelogsByCategory(String category) {
     final response = getLifelogs();
     return response.lifelogs
