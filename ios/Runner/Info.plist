@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+		<string>Serve il microfono per registrare le riunioni.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Serve per trascrivere l'audio.</string>
 </dict>
 </plist>

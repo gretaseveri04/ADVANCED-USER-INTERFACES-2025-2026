@@ -1,10 +1,19 @@
-import 'dart:async'; 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Import dei modelli
 import 'package:limitless_app/models/calendar_event_model.dart';
+
+// Import dei servizi (ASSICURATI CHE QUESTI FILE ESISTANO)
 import 'package:limitless_app/core/services/calendar_service.dart';
+import 'package:limitless_app/core/services/audio_recording_service.dart';
+import 'package:limitless_app/core/services/openai_service.dart';
+import 'package:limitless_app/core/services/meeting_repository.dart';
+// Aggiungi queste due righe in cima al file:
+import 'dart:typed_data'; // <--- Risolve l'errore "Undefined class Uint8List"
+import 'package:http/http.dart' as http; // <--- Serve per scaricare il file audio su Web
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,17 +23,23 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // --- 1. INIZIALIZZAZIONE DEI SERVIZI ---
   final CalendarService _calendarService = CalendarService();
+  final AudioRecordingService _audioService = AudioRecordingService();
+  final OpenAIService _openAIService = OpenAIService();
+  final MeetingRepository _meetingRepo = MeetingRepository();
+
   late final StreamSubscription<AuthState> _authSubscription;
   
   List<CalendarEvent> _eventsToday = [];
   late String _todayLabel;
-  
   String _userName = "User";
   String? _avatarUrl; 
   
+  // Stati per la UI
   bool _isRecording = false;
-  bool _isLoading = true;
+  bool _isProcessing = false; // Nuovo stato: caricamento/trascrizione in corso
+  bool _isLoadingEvents = true;
 
   @override
   void initState() {
@@ -45,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _authSubscription.cancel();
+    _audioService.cancel(); // Importante: rilascia il microfono se chiudi l'app
     super.dispose();
   }
 
@@ -67,24 +83,95 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _eventsToday = events;
-          _isLoading = false;
+          _isLoadingEvents = false;
         });
       }
     } catch (e) {
       debugPrint("Errore home events: $e");
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoadingEvents = false);
     }
   }
 
-  void _toggleRecording() {
-    setState(() => _isRecording = !_isRecording);
-    if (_isRecording) {
-      print("Start Recording...");
+  // --- 2. LA LOGICA DI REGISTRAZIONE ---
+  Future<void> _toggleRecording() async {
+    if (_isProcessing) return;
+
+    if (!_isRecording) {
+      // START
+      try {
+        print("🎙️ Avvio registrazione...");
+        // Su web non passiamo path, lasciamo che il browser gestisca
+        await _audioService.startRecording(); 
+        setState(() => _isRecording = true);
+      } catch (e) {
+        print("❌ Errore avvio: $e");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      }
     } else {
-      print("Stop Recording...");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Recording saved! Processing transcription...")),
-      );
+      // STOP
+      setState(() {
+        _isRecording = false;
+        _isProcessing = true; 
+      });
+
+      try {
+        print("🛑 Stop registrazione...");
+        
+        // 1. Ottieni il percorso (su Web è un blob URL)
+        final path = await _audioService.stopRecording();
+        
+        if (path != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Elaborazione dati...")),
+          );
+
+          // --- MAGIA PER IL WEB: Convertiamo tutto in Bytes ---
+          Uint8List audioBytes;
+          
+          // Se è un URL di rete (Blob su web), lo scarichiamo
+          if (path.startsWith('http') || path.startsWith('blob')) {
+             final response = await http.get(Uri.parse(path));
+             audioBytes = response.bodyBytes;
+          } else {
+             // Fallback per mobile (se usassi dart:io File(path).readAsBytesSync())
+             // Ma per ora testiamo su web
+             throw Exception("Su web ci aspettiamo un blob url");
+          }
+
+          // 2. Trascrivi (passando i bytes)
+          print("🧠 Invio a OpenAI...");
+          // Usiamo un nome file finto .webm perché Chrome registra in quel formato solitamente
+          final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.webm'); 
+          print("✅ Trascrizione: $transcript");
+
+          // 3. Carica su Supabase (passando i bytes)
+          print("☁️ Upload...");
+          final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
+
+          // 4. Salva DB
+          final defaultTitle = "Web Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
+          await _meetingRepo.saveMeeting(
+            title: defaultTitle,
+            transcript: transcript,
+            audioUrl: audioUrl,
+          );
+
+          print("🎉 Fatto!");
+          if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(backgroundColor: Colors.green, content: Text("Salvato!")),
+            );
+             _loadEvents(); // Ricarica eventuali eventi
+          }
+        }
+      } catch (e) {
+        print("❌ ERRORE: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text("Errore: $e")));
+        }
+      } finally {
+        if (mounted) setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -106,13 +193,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 25),
               _buildTodoList(_eventsToday),
               const SizedBox(height: 25),
-              _buildRecordSection(),
+              _buildRecordSection(), // Qui c'è il tasto magico
             ],
           ),
         ),
       ),
     );
   }
+
+  // --- WIDGETS UI ---
 
   Widget _buildHeader() {
     return Row(
@@ -221,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 14),
         SizedBox(
           height: 110, 
-          child: _isLoading 
+          child: _isLoadingEvents 
             ? const Center(child: CircularProgressIndicator())
             : eventsToday.isEmpty
               ? Container(
@@ -293,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- 3. SEZIONE BOTTONE REGISTRAZIONE ---
   Widget _buildRecordSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const Text("START RECORDING", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 14),
         InkWell(
-          onTap: _toggleRecording,
+          onTap: _toggleRecording, // Chiama la nuova funzione
           borderRadius: BorderRadius.circular(24),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -317,7 +407,18 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text("Record audio with automatic AI transcription", style: TextStyle(fontSize: 14, color: Colors.black54)),
                 const SizedBox(height: 24),
-                if (_isRecording)
+                
+                // GESTIONE STATI: CARICAMENTO, REGISTRAZIONE, RIPOSO
+                if (_isProcessing)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 12),
+                      const Text("Transcribing & Saving...", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  )
+                else if (_isRecording)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

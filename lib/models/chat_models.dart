@@ -31,6 +31,7 @@ class ChatMessage {
   final String content;
   final DateTime createdAt;
   final bool isMine;
+  final bool isAi; // <--- NUOVO CAMPO
 
   ChatMessage({
     required this.id,
@@ -39,6 +40,7 @@ class ChatMessage {
     required this.content,
     required this.createdAt,
     required this.isMine,
+    required this.isAi, // <---
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json, String myUserId) {
@@ -49,6 +51,7 @@ class ChatMessage {
       content: json['content'] ?? '',
       createdAt: DateTime.parse(json['created_at']).toLocal(),
       isMine: json['sender_id'] == myUserId,
+      isAi: json['is_ai'] ?? false, // <--- Leggiamo dal DB
     );
   }
 }
