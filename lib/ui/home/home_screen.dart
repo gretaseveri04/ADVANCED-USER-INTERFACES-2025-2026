@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
 
 // Import dei modelli
 import 'package:limitless_app/models/calendar_event_model.dart';
@@ -100,8 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // START
       try {
         print("🎙️ Avvio registrazione...");
-        // Su web non passiamo path, lasciamo che il browser gestisca
-        await _audioService.startRecording(); 
+        await _audioService.startRecording();
         setState(() => _isRecording = true);
       } catch (e) {
         print("❌ Errore avvio: $e");
@@ -111,57 +111,58 @@ class _HomeScreenState extends State<HomeScreen> {
       // STOP
       setState(() {
         _isRecording = false;
-        _isProcessing = true; 
+        _isProcessing = true;
       });
 
       try {
         print("🛑 Stop registrazione...");
         
-        // 1. Ottieni il percorso (su Web è un blob URL)
+        // 1. Ottieni il percorso del file
         final path = await _audioService.stopRecording();
         
         if (path != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Elaborazione dati...")),
+            const SnackBar(content: Text("Elaborazione audio...")),
           );
 
-          // --- MAGIA PER IL WEB: Convertiamo tutto in Bytes ---
           Uint8List audioBytes;
-          
-          // Se è un URL di rete (Blob su web), lo scarichiamo
+
+          // --- LOGICA IBRIDA (WEB vs MOBILE) ---
           if (path.startsWith('http') || path.startsWith('blob')) {
+             // SIAMO SU WEB (Chrome)
              final response = await http.get(Uri.parse(path));
              audioBytes = response.bodyBytes;
           } else {
-             // Fallback per mobile (se usassi dart:io File(path).readAsBytesSync())
-             // Ma per ora testiamo su web
-             throw Exception("Su web ci aspettiamo un blob url");
+             // SIAMO SU MOBILE (iPhone/Android)
+             // Leggiamo il file fisico dal disco del telefono
+             final file = File(path);
+             audioBytes = await file.readAsBytes();
           }
+          // -------------------------------------
 
-          // 2. Trascrivi (passando i bytes)
-          print("🧠 Invio a OpenAI...");
-          // Usiamo un nome file finto .webm perché Chrome registra in quel formato solitamente
-          final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.webm'); 
+          // 2. Trascrivi con Azure
+          print("🧠 Invio ad Azure...");
+          // Usiamo 'recording.m4a' perché su iPhone si registra in m4a
+          final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a'); 
           print("✅ Trascrizione: $transcript");
 
-          // 3. Carica su Supabase (passando i bytes)
+          // 3. Carica su Supabase
           print("☁️ Upload...");
           final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
 
-          // 4. Salva DB
-          final defaultTitle = "Web Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
+          // 4. Salva nel DB
+          final defaultTitle = "Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
           await _meetingRepo.saveMeeting(
             title: defaultTitle,
             transcript: transcript,
             audioUrl: audioUrl,
           );
 
-          print("🎉 Fatto!");
           if (mounted) {
              ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(backgroundColor: Colors.green, content: Text("Salvato!")),
+              const SnackBar(backgroundColor: Colors.green, content: Text("Meeting salvato!")),
             );
-             _loadEvents(); // Ricarica eventuali eventi
+             _loadEvents();
           }
         }
       } catch (e) {
