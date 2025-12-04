@@ -12,23 +12,42 @@ class TranscriptScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // --- SFONDO UNIFICATO ---
+      backgroundColor: const Color(0xFFF8F8FF), 
+      
+      // --- HEADER UNIFICATO ---
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
+          ),
         ),
         title: Text(
           lifelog.title.toUpperCase(),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
+            color: Colors.black,
+            letterSpacing: 1.0,
           ),
         ),
-        centerTitle: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black,
+        centerTitle: true,
       ),
+      // ------------------------
+
       body: lifelog.transcripts.isEmpty
           ? const Center(
               child: Text(
@@ -52,30 +71,56 @@ class TranscriptScreen extends StatelessWidget {
       String transcript,
       int index,
   ) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(Icons.mic, color: Colors.blue.shade400, size: 22),
-          title: Text(
-            'Registrazione ${index + 1}',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+    // --- DESIGN A CARD ---
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios,
-              size: 16, color: Colors.grey),
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              '/transcriptDetail',
-              arguments: transcript,
-            );
-          },
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.shade50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.description, color: Colors.deepPurple),
         ),
-        const Divider(height: 1, thickness: 0.5, color: Colors.grey),
-      ],
+        title: Text(
+          'Segmento ${index + 1}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        subtitle: Text(
+          transcript.length > 40 
+              ? "${transcript.substring(0, 40)}..." 
+              : transcript,
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/transcriptDetail',
+            arguments: transcript,
+          );
+        },
+      ),
     );
   }
-
 }

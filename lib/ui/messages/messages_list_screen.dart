@@ -30,22 +30,59 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // --- MODIFICA 1: Sfondo colorato uniformato ---
+      backgroundColor: const Color(0xFFF8F8FF), 
+      // ----------------------------------------------
+      
       appBar: AppBar(
-        title: const Text('Messages', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+        toolbarHeight: 70,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
+          ),
         ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            const Text(
+              "MESSAGES",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_comment_outlined, color: Colors.black),
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const NewChatScreen()));
-              _loadChats();
-            }, 
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.add_comment_rounded, color: Colors.deepPurple, size: 22),
+              onPressed: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => const NewChatScreen()));
+                _loadChats();
+              }, 
+            ),
           ),
         ],
       ),
@@ -64,9 +101,12 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
               child: Text("Non hai ancora nessuna chat.\nCreane una col tasto + in alto!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
             );
           }
-          return ListView.separated(
+          
+          // --- MODIFICA 2: ListView.builder invece di separated ---
+          // Usiamo le card, quindi non servono i divisori
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: conversations.length,
-            separatorBuilder: (ctx, index) => const Divider(height: 1, indent: 82),
             itemBuilder: (context, index) {
               return _ConversationTile(chat: conversations[index]);
             },
@@ -87,47 +127,73 @@ class _ConversationTile extends StatelessWidget {
     final avatarColor = Colors.primaries[displayName.hashCode % Colors.primaries.length];
     final initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : "?";
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ConversationScreen(
-              chatId: chat.id,
-              chatName: displayName,
-              avatarUrl: chat.avatarUrl,
+    // --- MODIFICA 3: Design a Card (Riquadro Bianco) ---
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ConversationScreen(
+                  chatId: chat.id,
+                  chatName: displayName,
+                  avatarUrl: chat.avatarUrl,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: avatarColor.withOpacity(0.2), // Colore più soft
+                  backgroundImage: chat.avatarUrl != null 
+                      ? NetworkImage(chat.avatarUrl!) 
+                      : null,
+                  child: chat.avatarUrl == null
+                      ? (chat.isGroup 
+                          ? Icon(Icons.groups, color: avatarColor)
+                          : Text(initials, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 18)))
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName, 
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Tocca per leggere i messaggi", 
+                        style: TextStyle(fontSize: 12, color: Colors.grey)
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade400),
+              ],
             ),
           ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: avatarColor,
-              backgroundImage: chat.avatarUrl != null 
-                  ? NetworkImage(chat.avatarUrl!) 
-                  : null,
-              child: chat.avatarUrl == null
-                  ? (chat.isGroup 
-                      ? const Icon(Icons.groups, color: Colors.white)
-                      : Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)))
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(displayName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  const Text("Tocca per leggere i messaggi", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

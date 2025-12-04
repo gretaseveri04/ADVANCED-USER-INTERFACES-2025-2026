@@ -3,18 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 
-// Import dei modelli
 import 'package:limitless_app/models/calendar_event_model.dart';
-
-// Import dei servizi (ASSICURATI CHE QUESTI FILE ESISTANO)
 import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/core/services/audio_recording_service.dart';
 import 'package:limitless_app/core/services/openai_service.dart';
 import 'package:limitless_app/core/services/meeting_repository.dart';
-// Aggiungi queste due righe in cima al file:
-import 'dart:typed_data'; // <--- Risolve l'errore "Undefined class Uint8List"
-import 'package:http/http.dart' as http; // <--- Serve per scaricare il file audio su Web
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // --- 1. INIZIALIZZAZIONE DEI SERVIZI ---
   final CalendarService _calendarService = CalendarService();
   final AudioRecordingService _audioService = AudioRecordingService();
   final OpenAIService _openAIService = OpenAIService();
@@ -37,9 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = "User";
   String? _avatarUrl; 
   
-  // Stati per la UI
   bool _isRecording = false;
-  bool _isProcessing = false; // Nuovo stato: caricamento/trascrizione in corso
+  bool _isProcessing = false;
   bool _isLoadingEvents = true;
 
   @override
@@ -61,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _authSubscription.cancel();
-    _audioService.cancel(); // Importante: rilascia il microfono se chiudi l'app
+    _audioService.cancel();
     super.dispose();
   }
 
@@ -93,36 +87,74 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- 2. LA LOGICA DI REGISTRAZIONE ---
-Future<void> _toggleRecording() async {
-    // Se sta già elaborando, ignora i click
+  Future<String?> _showRecordingTitleDialog() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Name this recording", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Give your meeting a title to find it easily later.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: "e.g. Project Brainstorming",
+                filled: true,
+                fillColor: const Color(0xFFF1F1F5),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Skip", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleRecording() async {
     if (_isProcessing) return;
 
     if (!_isRecording) {
-      // --- START REGISTRAZIONE ---
       try {
-        print("🎙️ Avvio registrazione...");
         await _audioService.startRecording();
         setState(() => _isRecording = true);
       } catch (e) {
-        print("❌ Errore avvio: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore avvio: $e")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore avvio: $e")));
       }
     } else {
-      // --- STOP REGISTRAZIONE & ELABORAZIONE ---
-      setState(() {
-        _isRecording = false;
-        _isProcessing = true;
-      });
-
       try {
-        print("🛑 Stop registrazione...");
-        
-        // 1. Ottieni il file audio
         final path = await _audioService.stopRecording();
         
+        String? userTitle;
+        if (path != null && mounted) {
+           userTitle = await _showRecordingTitleDialog();
+        }
+
+        setState(() {
+          _isRecording = false;
+          _isProcessing = true;
+        });
+
         if (path != null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -131,7 +163,6 @@ Future<void> _toggleRecording() async {
           }
 
           Uint8List audioBytes;
-          // Gestione differenziata Web vs Mobile
           if (path.startsWith('http') || path.startsWith('blob')) {
              final response = await http.get(Uri.parse(path));
              audioBytes = response.bodyBytes;
@@ -140,69 +171,46 @@ Future<void> _toggleRecording() async {
              audioBytes = await file.readAsBytes();
           }
 
-          // 2. Trascrizione (Speech-to-Text)
-          print("🧠 Invio ad Azure/OpenAI per trascrizione...");
           final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a'); 
-          print("✅ Trascrizione: $transcript");
-
-          // 3. Analisi Intelligente (Voice-to-Calendar) - VIA CODICE
-          print("📅 Analisi calendario (Regex) in corso...");
-          
-          // Usiamo la nostra nuova funzione invece dell'AI
           final detectedEvent = _analyzeTextForMeeting(transcript);
           
           if (detectedEvent != null) {
-            // --- CASO A: EVENTO TROVATO ---
-            
-            // Salvataggio nel DB Calendario
             await _calendarService.createEvent(detectedEvent);
-            
-            // Feedback Utente
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: Colors.deepPurple, 
-                  content: Text("📅 Evento creato: ${detectedEvent.title} per il ${DateFormat('d MMM').format(detectedEvent.startTime)}"),
+                  content: Text("📅 Evento creato: ${detectedEvent.title}"),
                   duration: const Duration(seconds: 4),
                 ),
               );
             }
-          } else {
-             // --- CASO B: NESSUN EVENTO TROVATO ---
-             print("⚠️ Nessuna data specifica + 'meeting' trovata.");
           }
 
-          // 4. Salvataggio Meeting (Memoria Storica)
-          // Carica audio su Storage
           final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
           
-          // --- CORREZIONE QUI SOTTO ---
-          // Usa il titolo dell'evento rilevato se esiste, altrimenti un default con l'ora
-          final defaultTitle = detectedEvent != null 
+          String finalTitle;
+          if (userTitle != null && userTitle.isNotEmpty) {
+            finalTitle = userTitle;
+          } else {
+            finalTitle = detectedEvent != null 
               ? "Meeting: ${DateFormat('MMMM d').format(detectedEvent.startTime)}" 
               : "Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
+          }
 
-          // Salva nel DB Meetings
           await _meetingRepo.saveMeeting(
-            title: defaultTitle,
+            title: finalTitle,
             transcript: transcript,
             audioUrl: audioUrl,
           );
 
-          // 5. Aggiorna la UI
-          if (mounted) {
-             _loadEvents(); // Ricarica la lista eventi orizzontale
-          }
+          if (mounted) _loadEvents(); 
         }
       } catch (e) {
-        print("❌ ERRORE GLOBALE: $e");
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(backgroundColor: Colors.red, content: Text("Errore: $e")),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text("Errore: $e")));
         }
       } finally {
-        // Ripristina stato bottone
         if (mounted) setState(() => _isProcessing = false);
       }
     }
@@ -212,87 +220,129 @@ Future<void> _toggleRecording() async {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 25),
-              _buildUserInfo(_todayLabel),
-              const SizedBox(height: 25),
-              _buildCalendarCard(context),
-              const SizedBox(height: 25),
-              _buildTodoList(_eventsToday),
-              const SizedBox(height: 25),
-              _buildRecordSection(), // Qui c'è il tasto magico
-            ],
+      
+      // --- HEADER AGGIORNATO (Maiuscolo e Centrato) ---
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        toolbarHeight: 70, 
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5), 
+                const Color(0xFFF8F8FF),
+              ],
+            ),
           ),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min, // Questo è cruciale per centrare la Row
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            // TITOLO MAIUSCOLO
+            const Text(
+              "DASHBOARD", 
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true, // TITOLO CENTRATO
+        actions: const [], 
+      ),
+      // ------------------------------------------------
+      
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            
+            // Profilo e Avatar qui nel corpo
+            _buildUserInfo(_todayLabel),
+            
+            const SizedBox(height: 25),
+            _buildCalendarCard(context),
+            const SizedBox(height: 25),
+            _buildTodoList(_eventsToday),
+            const SizedBox(height: 25),
+            _buildRecordSection(),
+            const SizedBox(height: 100), 
+          ],
         ),
       ),
     );
   }
 
-  // --- WIDGETS UI ---
-
-  Widget _buildHeader() {
+  Widget _buildUserInfo(String todayLabel) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
+        // Colonna Nome + Data
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                  )
-                ],
-              ),
-              child: const Icon(Icons.dashboard, color: Colors.deepPurple, size: 30),
+            Text(
+              _userName.toUpperCase(), 
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
-            const SizedBox(width: 10),
-            const Text(
-              "Dashboard",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            const SizedBox(height: 4),
+            Text(
+              "today: $todayLabel",
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ),
         
-        CircleAvatar(
-          radius: 26, 
-          backgroundColor: Colors.white,
-          backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-          child: _avatarUrl == null 
-              ? const Text('😊', style: TextStyle(fontSize: 28))
-              : null,
-        )
+        // Avatar Sfumato (Spostato qui)
+        Container(
+          margin: const EdgeInsets.only(right: 10), // Margine leggero
+          padding: const EdgeInsets.all(3), // Spessore bordo sfumato
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Color(0xFFB476FF), Color(0xFF7F7CFF), Color(0xFFFFB4E1)], 
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(3), // Spazio bianco
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            child: CircleAvatar(
+              radius: 28, // Dimensione avatar
+              backgroundColor: Colors.grey.shade100,
+              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+              child: _avatarUrl == null 
+                  ? Text(
+                      _userName.isNotEmpty ? _userName[0].toUpperCase() : "U", 
+                      style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold, fontSize: 20)
+                    )
+                  : null,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildUserInfo(String todayLabel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _userName.toUpperCase(), 
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "today: $todayLabel",
-          style: const TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-      ],
-    );
-  }
-
+  // ... (Il resto dei widget: _buildCalendarCard, _buildTodoList, _buildRecordSection rimane invariato)
+  // Assicurati di copiare i widget sottostanti dal codice precedente o di non cancellarli!
+  
   Widget _buildCalendarCard(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -415,7 +465,6 @@ Future<void> _toggleRecording() async {
     );
   }
 
-  // --- 3. SEZIONE BOTTONE REGISTRAZIONE ---
   Widget _buildRecordSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +472,7 @@ Future<void> _toggleRecording() async {
         const Text("START RECORDING", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 14),
         InkWell(
-          onTap: _toggleRecording, // Chiama la nuova funzione
+          onTap: _toggleRecording,
           borderRadius: BorderRadius.circular(24),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -441,14 +490,13 @@ Future<void> _toggleRecording() async {
                 const Text("Record audio with automatic AI transcription", style: TextStyle(fontSize: 14, color: Colors.black54)),
                 const SizedBox(height: 24),
                 
-                // GESTIONE STATI: CARICAMENTO, REGISTRAZIONE, RIPOSO
                 if (_isProcessing)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                       const SizedBox(width: 12),
-                      const Text("Transcribing & Saving...", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600)),
+                      const Text("Transcribing...", style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600)),
                     ],
                   )
                 else if (_isRecording)
@@ -480,35 +528,25 @@ Future<void> _toggleRecording() async {
     );
   }
 
-  // --- NUOVA LOGICA: Estrazione Eventi via Codice (Regex) ---
-
-  /// Cerca pattern tipo "meeting on Friday", "meeting next Monday", "December 12th meeting"
   CalendarEvent? _analyzeTextForMeeting(String text) {
     final lowerText = text.toLowerCase();
-    
-    // 1. Controllo base: deve contenere la parola "meeting"
     if (!lowerText.contains('meeting')) return null;
 
     final now = DateTime.now();
     DateTime? eventDate;
 
-    // --- CASE A: Giorni della settimana (es. "next friday", "on monday") ---
-    // Regex per catturare "next friday", "on monday", o solo "monday"
     final dayRegex = RegExp(r'(next\s+)?(on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)');
     final dayMatch = dayRegex.firstMatch(lowerText);
 
     if (dayMatch != null) {
-      final isNext = dayMatch.group(1) != null; // C'è scritto "next"?
-      final dayName = dayMatch.group(3)!; // es. "friday"
+      final isNext = dayMatch.group(1) != null;
+      final dayName = dayMatch.group(3)!;
       eventDate = _getDateFromDayName(dayName, isNext: isNext);
     }
 
-    // --- CASE B: Date specifiche (es. "december 12", "january 5th") ---
-    // Se non abbiamo trovato un giorno della settimana, cerchiamo una data
     if (eventDate == null) {
       final dateRegex = RegExp(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(st|nd|rd|th)?');
       final dateMatch = dateRegex.firstMatch(lowerText);
-      
       if (dateMatch != null) {
         final monthName = dateMatch.group(1)!;
         final dayNumber = int.parse(dateMatch.group(2)!);
@@ -516,12 +554,9 @@ Future<void> _toggleRecording() async {
       }
     }
 
-    // Se abbiamo trovato una data valida, creiamo l'evento
     if (eventDate != null) {
-      // Impostiamo l'orario di default (es. 10:00 AM)
       final startTime = DateTime(eventDate.year, eventDate.month, eventDate.day, 10, 0);
       final endTime = startTime.add(const Duration(hours: 1));
-
       return CalendarEvent(
         title: "Meeting (Detected)",
         description: "Auto-generated from transcript: \"$text\"",
@@ -530,55 +565,25 @@ Future<void> _toggleRecording() async {
         isAllDay: false,
       );
     }
-
     return null;
   }
 
-  /// Converte "monday" -> DateTime del prossimo lunedì
   DateTime _getDateFromDayName(String dayName, {bool isNext = false}) {
-    final days = {
-      'monday': DateTime.monday,
-      'tuesday': DateTime.tuesday,
-      'wednesday': DateTime.wednesday,
-      'thursday': DateTime.thursday,
-      'friday': DateTime.friday,
-      'saturday': DateTime.saturday,
-      'sunday': DateTime.sunday,
-    };
-
+    final days = {'monday': DateTime.monday, 'tuesday': DateTime.tuesday, 'wednesday': DateTime.wednesday, 'thursday': DateTime.thursday, 'friday': DateTime.friday, 'saturday': DateTime.saturday, 'sunday': DateTime.sunday};
     final now = DateTime.now();
     final targetWeekday = days[dayName]!;
-    
-    // Calcolo giorni di differenza
     int daysDiff = targetWeekday - now.weekday;
-    if (daysDiff <= 0) {
-      daysDiff += 7; // Se è oggi o passato, vai alla prossima settimana
-    }
-    
-    if (isNext) {
-      daysDiff += 7; // "Next Friday" solitamente salta quello imminente
-    }
-
+    if (daysDiff <= 0) daysDiff += 7;
+    if (isNext) daysDiff += 7;
     return now.add(Duration(days: daysDiff));
   }
 
-  /// Converte "december 12" -> DateTime corretto
   DateTime _getDateFromMonthDay(String monthName, int day) {
-    final months = {
-      'january': 1, 'february': 2, 'march': 3, 'april': 4,
-      'may': 5, 'june': 6, 'july': 7, 'august': 8,
-      'september': 9, 'october': 10, 'november': 11, 'december': 12
-    };
-
+    final months = {'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6, 'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12};
     final now = DateTime.now();
     final month = months[monthName]!;
-    
-    // Se il mese è passato (es. siamo a Dicembre e dicono "January"), è l'anno prossimo
     int year = now.year;
-    if (month < now.month) {
-      year++;
-    }
-
+    if (month < now.month) year++;
     return DateTime(year, month, day);
   }
 }

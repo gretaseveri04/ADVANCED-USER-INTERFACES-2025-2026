@@ -35,18 +35,47 @@ class _SignupScreenState extends State<SignupScreen> {
         role: roleController.text.trim(),
       );
 
+      // MODIFICA IMPORTANTE:
+      // Se 'Confirm Email' è attivo su Supabase, res.user NON è null, ma res.session SÌ è null.
       if (res.user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-        );
+        if (res.session != null) {
+          // Caso ideale: email confirm disabilitato o login automatico
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        } else {
+          // Caso Supabase con conferma email attiva
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text("Verify your email"),
+                content: const Text(
+                  "Account created successfully! Please check your email inbox and click the confirmation link to login.\n\n(Or login with Google to skip this step)",
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx); // Chiudi dialog
+                      Navigator.pop(context); // Torna al Login
+                    },
+                    child: const Text("OK"),
+                  )
+                ],
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll("Exception:", "").trim())),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll("Exception:", "").trim())),
+        );
+      }
     } finally {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -54,13 +83,19 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 35),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset("assets/images/logo.png", width: 100),
+              // Image.asset("assets/images/logo.png", width: 80), // Opzionale
+              const Text("Create Account", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
 
               _inputField("Name", nameController),
@@ -88,7 +123,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   child: Center(
                     child: loading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text(
                             "Create account",
                             style: TextStyle(
@@ -100,15 +135,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 15),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Text(
-                  "Already have an account? Login",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              )
+              const SizedBox(height: 30),
             ],
           ),
         ),

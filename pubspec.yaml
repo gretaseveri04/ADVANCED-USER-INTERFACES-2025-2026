@@ -2,7 +2,7 @@ name: limitless_app
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+1
+sdk: '>=3.0.0 <4.0.0'
 
 environment:
   sdk: ^3.9.2
@@ -28,6 +28,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.0.4
   mime: ^2.0.0             # Utile per il tipo di file audio
+  google_fonts: ^6.1.0
 
   # Audio Recording & Permissions (Nuove dipendenze)
   record: ^6.1.2           
@@ -44,7 +45,7 @@ flutter:
   uses-material-design: true
   
   assets:
-    - assets/images/logo.png
+    - assets/images/
     - mock_data/mock_responses.json
 
 flutter_icons:

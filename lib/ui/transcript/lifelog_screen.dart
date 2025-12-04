@@ -13,8 +13,6 @@ class LifelogScreen extends StatefulWidget {
 
 class _LifelogScreenState extends State<LifelogScreen> {
   final MeetingRepository _repository = MeetingRepository();
-  
-  // Questa variabile conterrà il futuro caricamento dei dati
   late Future<List<Meeting>> _meetingsFuture;
 
   @override
@@ -23,7 +21,6 @@ class _LifelogScreenState extends State<LifelogScreen> {
     _meetingsFuture = _repository.fetchMeetings();
   }
 
-  // Funzione per ricaricare tirando giù la lista (Pull to refresh)
   Future<void> _refreshList() async {
     setState(() {
       _meetingsFuture = _repository.fetchMeetings();
@@ -33,35 +30,54 @@ class _LifelogScreenState extends State<LifelogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F8FF),
+      // --- HEADER UNIFICATO ---
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'YOUR RECORDINGS',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-        ),
-        centerTitle: false,
-        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        toolbarHeight: 70,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
+          ),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            const Text(
+              "YOUR RECORDINGS",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
       ),
+      // ------------------------
       body: FutureBuilder<List<Meeting>>(
         future: _meetingsFuture,
         builder: (context, snapshot) {
-          // 1. Caso Caricamento
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          
-          // 2. Caso Errore
           if (snapshot.hasError) {
             return Center(child: Text("Errore: ${snapshot.error}"));
           }
 
-          // 3. Caso Lista Vuota
           final meetings = snapshot.data ?? [];
           if (meetings.isEmpty) {
             return const Center(
@@ -72,7 +88,6 @@ class _LifelogScreenState extends State<LifelogScreen> {
             );
           }
 
-          // 4. Caso Dati Pronti -> Mostriamo la lista
           return RefreshIndicator(
             onRefresh: _refreshList,
             child: ListView.builder(
@@ -90,39 +105,55 @@ class _LifelogScreenState extends State<LifelogScreen> {
   }
 
   Widget _buildMeetingCard(BuildContext context, Meeting meeting) {
-    final dateStr = DateFormat('MMM d, y • HH:mm').format(meeting.createdAt);
+    final dateStr = DateFormat('MMM d, y • HH:mm').format(meeting.createdAt.toLocal()); 
     
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade50,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.mic, color: Colors.deepPurple),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12), // Spazio tra le card
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F0FF), // Viola chiarissimo
+            borderRadius: BorderRadius.circular(16),
           ),
-          title: Text(
-            meeting.title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          subtitle: Text(dateStr, style: TextStyle(color: Colors.grey.shade600)),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-          onTap: () {
-            // Naviga al dettaglio passando l'oggetto Meeting intero (o solo il testo)
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TranscriptDetailScreen(meeting: meeting),
-              ),
-            );
-          },
+          child: const Icon(Icons.mic, color: Colors.deepPurple),
         ),
-        const Divider(height: 30),
-      ],
+        title: Text(
+          meeting.title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(dateStr, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.black),
+        ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TranscriptDetailScreen(meeting: meeting),
+            ),
+          );
+        },
+      ),
     );
   }
 }

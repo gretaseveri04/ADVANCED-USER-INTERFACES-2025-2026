@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart'; 
@@ -182,78 +181,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Profilo",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const Text(
-                "Impostazioni account",
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 30),
-                    _buildHeaderInfo(initials, fullName),
-                    const SizedBox(height: 20),
-                    
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          _buildTabButton("Account", 0),
-                          const SizedBox(width: 8),
-                          _buildTabButton("Notifiche", 1),
-                          const SizedBox(width: 8),
-                          _buildTabButton("Privacy", 2),
-                          const SizedBox(width: 8),
-                          _buildTabButton("Preferenze", 3),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(height: 1, color: Color(0xFFF1F1F5)),
-                    
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _buildTabContent(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
+      // --- HEADER UNIFICATO ---
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        toolbarHeight: 70,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
           ),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            const Text(
+              "PROFILE",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      // ------------------------
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Rimosso il vecchio titolo "Profilo"
+            const Text(
+              "Account Settings",
+              style: TextStyle(fontSize: 14, color: Colors.grey, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 20),
+
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 30),
+                  _buildHeaderInfo(initials, fullName),
+                  const SizedBox(height: 20),
+                  
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildTabButton("Account", 0),
+                        const SizedBox(width: 8),
+                        _buildTabButton("Notifiche", 1),
+                        const SizedBox(width: 8),
+                        _buildTabButton("Privacy", 2),
+                        const SizedBox(width: 8),
+                        _buildTabButton("Preferenze", 3),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(height: 1, color: Color(0xFFF1F1F5)),
+                  
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildTabContent(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 100),
+          ],
         ),
       ),
     );
   }
 
- Widget _buildHeaderInfo(String initials, String fullName) {
+  // ... (Tutti i metodi _buildHeaderInfo, _buildTabButton e i contenuti restano uguali a prima) ...
+  // Assicurati di copiare il resto del file ProfileScreen originale da qui in giù!
+  
+  Widget _buildHeaderInfo(String initials, String fullName) {
     return Column(
       children: [
         Stack(
@@ -572,49 +602,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
          const SizedBox(height: 20),
-
         const Text("Lingua", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-
         const SizedBox(height: 10),
-
          Container(
-
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-
           decoration: BoxDecoration(
-
             border: Border.all(color: Colors.grey.shade200),
-
             borderRadius: BorderRadius.circular(12),
-
           ),
-
           child: const Row(
-
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
             children: [
-
               Row(
-
                 children: [
-
                    Icon(Icons.language, color: Colors.grey),
-
                    SizedBox(width: 10),
-
                    Text("Lingua dell'interfaccia"),
-
                 ],
-
               ),
-
               Text("Italiano", style: TextStyle(fontWeight: FontWeight.bold)),
-
             ],
-
           ),
-
         ),
       ],
     );

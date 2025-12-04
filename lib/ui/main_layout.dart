@@ -17,11 +17,11 @@ class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
 
   final List<Widget> pages = [
-    const HomeScreen(),            
-    const LifelogScreen(),         
-    const ChatScreen(),            
-    const MessagesListScreen(),    
-    const ProfileScreen(),         
+    const HomeScreen(),            // 0
+    const LifelogScreen(),         // 1
+    const ChatScreen(),            // 2 (AI Chat)
+    const MessagesListScreen(),    // 3
+    const ProfileScreen(),         // 4
   ];
 
   @override
@@ -39,37 +39,40 @@ class _MainLayoutState extends State<MainLayout> {
         },
       ),
 
-      floatingActionButton: Container(
-        height: 58.0, 
-        width: 58.0,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3366FF), Color(0xFF8844FF), Color(0xFFFFAA00)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3), 
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(0, 4), 
+      // MODIFICA QUI: Se siamo sulla pagina Chat (index 2), nascondiamo il bottone
+      floatingActionButton: _selectedIndex == 2 
+          ? null // Nasconde il bottone
+          : Container(
+              height: 58.0, 
+              width: 58.0,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3366FF), Color(0xFF8844FF), Color(0xFFFFAA00)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3), 
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4), 
+                  ),
+                ],
+              ),
+              child: FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedIndex = 2; // Porta alla Chat
+                  });
+                },
+                backgroundColor: Colors.transparent,
+                elevation: 0, 
+                highlightElevation: 0,
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
+              ),
             ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () {
-            setState(() {
-              _selectedIndex = 2;
-            });
-          },
-          backgroundColor: Colors.transparent,
-          elevation: 0, 
-          highlightElevation: 0,
-          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-        ),
-      ),
     );
   }
 }

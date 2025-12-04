@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:limitless_app/core/services/openai_service.dart'; // Usa OpenAI Service
-import 'package:limitless_app/core/services/meeting_repository.dart'; // Per scaricare i meeting
+import 'package:limitless_app/core/services/openai_service.dart';
+import 'package:limitless_app/core/services/meeting_repository.dart';
 
 class ChatMessage {
   final String content;
@@ -26,41 +26,43 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
-  // Servizi
   final OpenAIService _aiService = OpenAIService();
   final MeetingRepository _meetingRepo = MeetingRepository();
 
+  // Lista messaggi
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   
-  // Questa stringa conterrà tutta la conoscenza dei meeting
   String _meetingsContext = "";
   bool _isContextLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _loadMeetingContext(); // Carichiamo la memoria all'avvio
+    _loadMeetingContext();
     
-    // Messaggio di benvenuto
+    // Messaggio di benvenuto iniziale
     _messages.add(ChatMessage(
-      content: "Hello! How can I help you today?",
+      content: "Hi there! 👋 I'm your personal AI assistant. I can help with summaries, emails and more.",
       role: "assistant",
       timestamp: DateTime.now(),
     ));
   }
 
-  /// Scarica tutti i meeting e crea una stringa unica di testo
   Future<void> _loadMeetingContext() async {
     try {
       final meetings = await _meetingRepo.fetchMeetings();
-      
       final buffer = StringBuffer();
+      
       for (final m in meetings) {
-        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(m.createdAt);
-        buffer.writeln("--- MEETING: ${m.title} ($dateStr) ---");
-        buffer.writeln("Trascrizione: ${m.transcription}"); // Usa 'transcription' o 'transcription_text' in base al tuo modello
-        buffer.writeln("\n");
+        final localTime = m.createdAt.toLocal();
+        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(localTime);
+
+        if (m.transcription.isNotEmpty) {
+           buffer.writeln("--- MEETING: ${m.title} ($dateStr) ---");
+           buffer.writeln("Contenuto: ${m.transcription}");
+           buffer.writeln("\n");
+        }
       }
       
       setState(() {
@@ -93,8 +95,8 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage() async {
-    final text = _controller.text.trim();
+  Future<void> _sendMessage({String? specificText}) async {
+    final text = specificText ?? _controller.text.trim();
     if (text.isEmpty) return;
 
     final userMessage = ChatMessage(
@@ -106,13 +108,14 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _controller.clear();
+    if (specificText != null) FocusScope.of(context).unfocus(); 
+    
     _scrollToBottom(); 
 
     try {
-      // ORA PASSIAMO IL CONTESTO DEI MEETING ALL'AI
       final reply = await _aiService.getChatResponse(
         text, 
-        contextData: _meetingsContext // <--- IL SEGRETO È QUI
+        contextData: _meetingsContext
       );
       
       final aiMessage = ChatMessage(
@@ -139,22 +142,49 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool showSuggestions = _messages.length <= 1;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FF), // Sfondo leggermente colorato come il resto dell'app
+      backgroundColor: const Color(0xFFF8F8FF), 
+      // --- HEADER UNIFICATO ---
       appBar: AppBar(
-        // Rimosso l'immagine logo per coerenza con le altre schermate, puoi rimetterla se vuoi
-        title: const Text("AI Assistant", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        elevation: 0, 
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        toolbarHeight: 70,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
+          ),
         ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo.png', height: 28),
+            const SizedBox(width: 10),
+            const Text(
+              "AI ASSISTANT",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
       ),
+      // ------------------------
       body: Column(
         children: [
-          // Banner opzionale per mostrare se sta caricando la memoria
           if (!_isContextLoaded)
              Container(
                width: double.infinity,
@@ -164,28 +194,157 @@ class _ChatScreenState extends State<ChatScreen> {
              ),
 
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _MessageBubble(message: msg);
-              },
-            ),
+            child: showSuggestions 
+                ? _buildEmptyStateWithSuggestions() 
+                : ListView.builder(               
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      return _MessageBubble(message: msg);
+                    },
+                  ),
           ),
+          
           if (_isLoading)
             const LinearProgressIndicator(
               backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
               minHeight: 2,
             ),
+            
           _ChatInputField(
             controller: _controller,
-            onSend: _sendMessage,
-            isEnabled: !_isLoading, // Disabilita input mentre l'AI pensa
+            onSend: () => _sendMessage(),
+            isEnabled: !_isLoading, 
           ),
         ],
+      ),
+    );
+  }
+
+  // --- WIDGET SUGGESTIONS ---
+  Widget _buildEmptyStateWithSuggestions() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const SizedBox(height: 30), // Spazio dall'alto aumentato un po'
+          
+          // --- RIMOSSO IL PALLINO QUI ---
+          
+          const Text(
+            "How can I help you today?",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "I have access to all your recordings, transcripts,\nmeetings and calendar.",
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          
+          // GRIGLIA SUGGESTIONS
+          GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4, 
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _suggestionCard(
+                Icons.description, 
+                Colors.orange, 
+                "Summarize meetings", 
+                "Please give me a summary of my recent meetings."
+              ),
+              _suggestionCard(
+                Icons.email, 
+                Colors.orange, 
+                "Write email", 
+                "Draft a follow-up email based on the last meeting."
+              ),
+              _suggestionCard(
+                Icons.list, 
+                Colors.orange, 
+                "Create task list", 
+                "Extract action items from my last recording and make a list."
+              ),
+              _suggestionCard(
+                Icons.lightbulb, 
+                Colors.orange, 
+                "Brainstorm", 
+                "Help me brainstorm ideas based on the project discussed."
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 30),
+          // Messaggio di benvenuto
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("👋", style: TextStyle(fontSize: 20)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Hi there! I'm your personal AI assistant. I can help you with summaries, emails, tasks, suggestions and more. How can I help you today?",
+                    style: TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _suggestionCard(IconData icon, Color iconColor, String title, String prompt) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      elevation: 0,
+      child: InkWell(
+        onTap: () => _sendMessage(specificText: prompt), 
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor, 
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -199,7 +358,6 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == "user";
-    // Colori presi dal tema dell'app (Home)
     final userColor = const Color(0xFF7F7CFF); 
     final aiColor = Colors.white;
 
@@ -250,7 +408,7 @@ class _ChatInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 24), // Extra bottom padding per iPhone moderni
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),

@@ -13,12 +13,10 @@ class CustomBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
+        border: Border(
+          top: BorderSide(color: Colors.grey.withOpacity(0.2), width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
@@ -28,24 +26,33 @@ class CustomBottomNav extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(Icons.home, "Home", 0),
-          _navItem(Icons.mic, "Record", 1),
-          _navItem(Icons.bolt, "AI", 2),
-          _navItem(Icons.chat_bubble_outline, "Chat", 3),
-          _navItem(Icons.person_outline, "Profile", 4),
-        ],
+      child: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(Icons.home, "Home", 0),
+              _navItem(Icons.mic, "Record", 1),
+              
+              // Logo centrale
+              _navItem("assets/images/logo.png", "AI", 2, isAsset: true),
+              
+              _navItem(Icons.chat_bubble_outline, "Chat", 3),
+              _navItem(Icons.person_outline, "Profile", 4),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, int index) {
+  Widget _navItem(dynamic icon, String label, int index, {bool isAsset = false}) {
     final bool isActive = index == currentIndex;
 
     return GestureDetector(
       onTap: () => onTap(index),
+      behavior: HitTestBehavior.opaque, 
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -53,18 +60,29 @@ class CustomBottomNav extends StatelessWidget {
             duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.all(8),
             decoration: isActive
-                ? BoxDecoration(
-                    gradient: const LinearGradient(
+                ? const BoxDecoration(
+                    gradient: LinearGradient(
                       colors: [Color(0xFFB476FF), Color(0xFF7F7CFF)],
                     ),
                     shape: BoxShape.circle,
                   )
                 : const BoxDecoration(color: Colors.transparent),
-            child: Icon(
-              icon,
-              color: isActive ? Colors.white : Colors.grey,
-              size: 26,
-            ),
+            child: isAsset
+                ? Image.asset(
+                    icon as String,
+                    width: 26, // Stessa grandezza delle icone
+                    height: 26,
+                    fit: BoxFit.contain,
+                    // LOGICA COLORE: 
+                    // Se attivo -> Bianco (per contrasto sul viola)
+                    // Se inattivo -> Null (mostra i colori originali del logo invece del grigio)
+                    color: isActive ? Colors.white : null, 
+                  )
+                : Icon(
+                    icon as IconData,
+                    color: isActive ? Colors.white : Colors.grey,
+                    size: 26,
+                  ),
           ),
           const SizedBox(height: 4),
           Text(

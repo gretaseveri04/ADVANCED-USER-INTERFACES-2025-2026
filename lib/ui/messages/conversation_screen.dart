@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:limitless_app/models/chat_models.dart';
 import 'package:limitless_app/core/services/chat_service.dart';
 import 'package:limitless_app/core/services/openai_service.dart';
-// 1. IMPORTIAMO IL REPOSITORY E IL FORMATTER
 import 'package:limitless_app/core/services/meeting_repository.dart';
 import 'package:intl/intl.dart';
 
@@ -26,7 +25,7 @@ class ConversationScreen extends StatefulWidget {
 class _ConversationScreenState extends State<ConversationScreen> {
   final ChatService _chatService = ChatService();
   final OpenAIService _aiService = OpenAIService();
-  final MeetingRepository _meetingRepo = MeetingRepository(); // 2. Istanza Repo
+  final MeetingRepository _meetingRepo = MeetingRepository(); 
   final SupabaseClient _supabase = Supabase.instance.client;
   
   final TextEditingController _controller = TextEditingController();
@@ -36,26 +35,22 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final Map<String, Color> _senderColors = {};
   
   bool _isAiThinking = false;
-  
-  // 3. VARIABILE PER LA MEMORIA
   String? _meetingsContext; 
 
   @override
   void initState() {
     super.initState();
-    // Opzionale: pre-carichiamo la memoria appena apri la chat
     _loadMeetingContext();
   }
 
-  // 4. FUNZIONE CHE CREA IL CONTESTO (RAG)
   Future<void> _loadMeetingContext() async {
     try {
       final meetings = await _meetingRepo.fetchMeetings();
       final buffer = StringBuffer();
       
       for (final m in meetings) {
-        final dateStr = DateFormat('dd/MM/yyyy').format(m.createdAt);
-        // Aggiungiamo solo meeting che hanno una trascrizione valida
+        final localTime = m.createdAt.toLocal();
+        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(localTime);
         if (m.transcription.isNotEmpty) {
            buffer.writeln("--- MEETING: ${m.title} ($dateStr) ---");
            buffer.writeln("Contenuto: ${m.transcription}");
@@ -63,7 +58,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         }
       }
       _meetingsContext = buffer.toString();
-      print("🧠 Memoria Gruppo Caricata: ${meetings.length} meeting.");
     } catch (e) {
       print("Errore caricamento contesto: $e");
     }
@@ -72,41 +66,22 @@ class _ConversationScreenState extends State<ConversationScreen> {
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    
     _controller.clear(); 
-
     try {
-      // Invia messaggio utente
       await _chatService.sendMessage(widget.chatId, text);
-
-      // Trigger AI
       if (text.toLowerCase().contains("@ai")) {
         _triggerAiResponse(text);
       }
-
     } catch (e) {
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
-      }
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
     }
   }
 
   Future<void> _triggerAiResponse(String userQuery) async {
     setState(() => _isAiThinking = true);
-
     try {
-      // 5. SICUREZZA: Se il contesto non è ancora pronto, caricalo ora al volo
-      if (_meetingsContext == null) {
-        await _loadMeetingContext();
-      }
-
-      // 6. CHIAMATA AI CON CONTESTO
-      // Passiamo _meetingsContext alla funzione modificata prima
-      final aiReply = await _aiService.getChatResponse(
-        userQuery, 
-        contextData: _meetingsContext 
-      );
-
+      if (_meetingsContext == null) await _loadMeetingContext();
+      final aiReply = await _aiService.getChatResponse(userQuery, contextData: _meetingsContext);
       final myUserId = _supabase.auth.currentUser!.id;
       
       await _supabase.from('messages').insert({
@@ -116,7 +91,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         'is_ai': true, 
         'created_at': DateTime.now().toIso8601String(),
       });
-
     } catch (e) {
       print("Errore AI: $e");
     } finally {
@@ -125,22 +99,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Future<String> _getSenderName(String userId) async {
-    if (_senderNames.containsKey(userId)) {
-      return _senderNames[userId]!;
-    }
-    
+    if (_senderNames.containsKey(userId)) return _senderNames[userId]!;
     try {
-      final data = await _supabase
-          .from('profiles')
-          .select('first_name, last_name, avatar_url') 
-          .eq('id', userId)
-          .maybeSingle();
-      
+      final data = await _supabase.from('profiles').select('first_name, last_name').eq('id', userId).maybeSingle();
       String name = "Utente";
-      if (data != null) {
-        name = "${data['first_name']} ${data['last_name']}".trim();
-        if (name.isEmpty) name = "Sconosciuto";
-      }
+      if (data != null) name = "${data['first_name']} ${data['last_name']}".trim();
+      if (name.isEmpty) name = "Sconosciuto";
 
       if (mounted) {
         setState(() {
@@ -156,21 +120,34 @@ class _ConversationScreenState extends State<ConversationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
+      // --- HEADER UNIFICATO ---
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: const BackButton(color: Colors.black),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFE0E8FF).withOpacity(0.5),
+                const Color(0xFFF8F8FF),
+              ],
+            ),
+          ),
+        ),
         title: Row(
           children: [
             CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.deepPurple,
+              radius: 18,
+              backgroundColor: Colors.white,
               backgroundImage: widget.avatarUrl != null ? NetworkImage(widget.avatarUrl!) : null,
               child: widget.avatarUrl == null
-                  ? Text(widget.chatName.isNotEmpty ? widget.chatName[0].toUpperCase() : "?", style: const TextStyle(color: Colors.white, fontSize: 14))
+                  ? Text(widget.chatName.isNotEmpty ? widget.chatName[0].toUpperCase() : "?", style: const TextStyle(color: Colors.deepPurple, fontSize: 16, fontWeight: FontWeight.bold))
                   : null,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 widget.chatName,
@@ -181,6 +158,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ],
         ),
       ),
+      // ------------------------
       body: Column(
         children: [
           Expanded(
@@ -189,7 +167,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!;
-                if (messages.isEmpty) return const Center(child: Text("Nessun messaggio. Scrivi @ai per chiedere aiuto!", style: TextStyle(color: Colors.grey)));
+                if (messages.isEmpty) return const Center(child: Text("Start the conversation!", style: TextStyle(color: Colors.grey)));
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -198,7 +176,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
-                    
                     if (!msg.isMine && !msg.isAi && !_senderNames.containsKey(msg.senderId)) {
                       _getSenderName(msg.senderId);
                     }
@@ -217,7 +194,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                  children: [
                    const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2)),
                    const SizedBox(width: 8),
-                   Text("Sto leggendo i meeting e scrivendo...", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                   Text("AI is typing...", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                  ],
                ),
              ),
@@ -229,22 +206,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
   
   Widget _buildBubble(ChatMessage msg) {
-    final isMe = msg.isMine && !msg.isAi; // È mio solo se NON è AI
+    final isMe = msg.isMine && !msg.isAi;
     final isAi = msg.isAi;
-
-    String senderName = "...";
-    Color senderColor = Colors.grey;
-
-    if (isAi) {
-      senderName = "AI Assistant ✨";
-      senderColor = Colors.deepPurple;
-    } else {
-      senderName = _senderNames[msg.senderId] ?? "...";
-      senderColor = _senderColors[msg.senderId] ?? Colors.grey;
-    }
+    String senderName = isAi ? "AI Assistant ✨" : (_senderNames[msg.senderId] ?? "...");
+    Color senderColor = isAi ? Colors.deepPurple : (_senderColors[msg.senderId] ?? Colors.grey);
 
     return Align(
-      // Se sono io -> Destra. Se è AI o Collega -> Sinistra
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
@@ -252,28 +219,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
         child: Column(
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // Mostra il nome se NON sono io (quindi AI o Colleghi)
             if (!isMe)
               Padding(
                 padding: const EdgeInsets.only(left: 12, bottom: 4),
-                child: Text(
-                  senderName, 
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: senderColor)
-                ),
+                child: Text(senderName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: senderColor)),
               ),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                // COLORE SFONDO:
-                // Io -> Viola scuro
-                // AI -> Viola chiarissimo (o un colore distintivo)
-                // Colleghi -> Bianco
-                color: isMe 
-                    ? Colors.deepPurple 
-                    : isAi 
-                        ? const Color(0xFFF3E5F5) // Viola chiarissimo per AI
-                        : Colors.white,
-                
+                color: isMe ? Colors.deepPurple : (isAi ? const Color(0xFFF3E5F5) : Colors.white),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16), 
                   topRight: const Radius.circular(16), 
@@ -283,13 +237,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1))],
                 border: isAi ? Border.all(color: Colors.deepPurple.withOpacity(0.3)) : null,
               ),
-              child: Text(
-                msg.content, 
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87, 
-                  fontSize: 16
-                )
-              ),
+              child: Text(msg.content, style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 16)),
             ),
           ],
         ),
@@ -310,10 +258,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               child: TextField(
                 controller: _controller, 
                 onSubmitted: (_) => _sendMessage(), 
-                decoration: const InputDecoration(
-                  hintText: "Scrivi (@ai per chiedere aiuto)...", // Suggerimento
-                  border: InputBorder.none
-                )
+                decoration: const InputDecoration(hintText: "Write a message (@ai for help)...", border: InputBorder.none)
               ),
             ),
           ),

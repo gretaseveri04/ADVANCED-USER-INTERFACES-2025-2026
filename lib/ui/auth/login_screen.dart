@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:limitless_app/core/services/auth_service.dart';
 import 'package:limitless_app/ui/auth/signup_screen.dart';
 import 'package:limitless_app/ui/main_layout.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -14,9 +16,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
   bool loading = false;
 
+  late final Stream<AuthState> _authStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _authStream = Supabase.instance.client.auth.onAuthStateChange;
+    
+    // Ascoltatore che porta alla Home dopo il login (es. Google redirect)
+    _authStream.listen((data) {
+      if (data.session != null && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainLayout()),
+        );
+      }
+    });
+  }
+
   Future<void> login() async {
     setState(() => loading = true);
-
     try {
       final auth = AuthService();
       final res = await auth.login(
@@ -24,19 +42,35 @@ class _LoginScreenState extends State<LoginScreen> {
         passwordController.text.trim(),
       );
 
-      if (res.session != null) {
-        print("Logged in!");
+      if (res.session != null && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainLayout()),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll('Exception:', '').trim())),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception:', '').trim())),
+        );
+      }
     } finally {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _googleSignIn() async {
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.flutterquickstart://login-callback/',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore Google: $e")),
+        );
+      }
     }
   }
 
@@ -108,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Center(
                     child: loading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text(
                             "Continue",
                             style: TextStyle(
@@ -124,6 +158,52 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
 
               Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text("OR", style: TextStyle(color: Colors.grey.shade400)),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // --- PULSANTE GOOGLE AGGIORNATO (Versione Grande) ---
+              SizedBox(
+                width: double.infinity, // Occupa tutta la larghezza come gli altri campi
+                child: OutlinedButton.icon(
+                  onPressed: _googleSignIn,
+                  style: OutlinedButton.styleFrom(
+                    // Padding verticale 18 per matchare esattamente l'altezza degli altri
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                    side: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5), // Bordo grigio chiaro
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  icon: Image.asset(
+                    'assets/images/google.png',
+                    height: 24, 
+                    width: 24,
+                  ), 
+                  label: const Text(
+                    "Sign in with Google",
+                    style: TextStyle(
+                      fontSize: 18, // Stessa dimensione del font di "Continue"
+                      color: Colors.black87, 
+                      fontWeight: FontWeight.w600
+                    ),
+                  ),
+                ),
+              ),
+              // ----------------------------------
+
+              const SizedBox(height: 30),
+
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text("Don't have an account? "),
@@ -132,14 +212,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const SignupScreen()),
-                  );
-                },
-                child: const Text(
-                  "Sign up",
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-              ),
-            ),
-
+                      );
+                    },
+                    child: const Text(
+                      "Sign up",
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
             ],
