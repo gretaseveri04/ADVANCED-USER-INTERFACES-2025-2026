@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'package:limitless_app/models/chat_models.dart';
 import 'package:limitless_app/core/services/chat_service.dart';
-// Assicurati di importare il servizio che abbiamo fatto prima per Azure!
-import 'package:limitless_app/core/services/openai_service.dart'; 
+import 'package:limitless_app/core/services/openai_service.dart';
+// 1. IMPORTIAMO IL REPOSITORY E IL FORMATTER
+import 'package:limitless_app/core/services/meeting_repository.dart';
+import 'package:intl/intl.dart';
 
 class ConversationScreen extends StatefulWidget {
   final String chatId;
@@ -23,7 +25,8 @@ class ConversationScreen extends StatefulWidget {
 
 class _ConversationScreenState extends State<ConversationScreen> {
   final ChatService _chatService = ChatService();
-  final OpenAIService _aiService = OpenAIService(); // <--- Servizio Azure
+  final OpenAIService _aiService = OpenAIService();
+  final MeetingRepository _meetingRepo = MeetingRepository(); // 2. Istanza Repo
   final SupabaseClient _supabase = Supabase.instance.client;
   
   final TextEditingController _controller = TextEditingController();
@@ -32,7 +35,39 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final Map<String, String> _senderNames = {};
   final Map<String, Color> _senderColors = {};
   
-  bool _isAiThinking = false; // Per mostrare un indicatore di caricamento
+  bool _isAiThinking = false;
+  
+  // 3. VARIABILE PER LA MEMORIA
+  String? _meetingsContext; 
+
+  @override
+  void initState() {
+    super.initState();
+    // Opzionale: pre-carichiamo la memoria appena apri la chat
+    _loadMeetingContext();
+  }
+
+  // 4. FUNZIONE CHE CREA IL CONTESTO (RAG)
+  Future<void> _loadMeetingContext() async {
+    try {
+      final meetings = await _meetingRepo.fetchMeetings();
+      final buffer = StringBuffer();
+      
+      for (final m in meetings) {
+        final dateStr = DateFormat('dd/MM/yyyy').format(m.createdAt);
+        // Aggiungiamo solo meeting che hanno una trascrizione valida
+        if (m.transcription.isNotEmpty) {
+           buffer.writeln("--- MEETING: ${m.title} ($dateStr) ---");
+           buffer.writeln("Contenuto: ${m.transcription}");
+           buffer.writeln("\n");
+        }
+      }
+      _meetingsContext = buffer.toString();
+      print("🧠 Memoria Gruppo Caricata: ${meetings.length} meeting.");
+    } catch (e) {
+      print("Errore caricamento contesto: $e");
+    }
+  }
 
   void _sendMessage() async {
     final text = _controller.text.trim();
@@ -41,38 +76,44 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _controller.clear(); 
 
     try {
-      // 1. Invia il messaggio dell'utente (come faceva prima)
+      // Invia messaggio utente
       await _chatService.sendMessage(widget.chatId, text);
 
-      // 2. CONTROLLO TRIGGER AI: Se il messaggio contiene "@ai"
+      // Trigger AI
       if (text.toLowerCase().contains("@ai")) {
         _triggerAiResponse(text);
       }
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      }
     }
   }
 
-  // Nuova funzione che gestisce la risposta dell'AI
   Future<void> _triggerAiResponse(String userQuery) async {
     setState(() => _isAiThinking = true);
 
     try {
-      // Recuperiamo gli ultimi 5 messaggi per dare contesto all'AI (opzionale)
-      // Per ora mandiamo solo la domanda diretta per semplicità
-      
-      // Chiamata ad Azure (usa la funzione che abbiamo creato prima in openai_service.dart)
-      final aiReply = await _aiService.getChatResponse(userQuery);
+      // 5. SICUREZZA: Se il contesto non è ancora pronto, caricalo ora al volo
+      if (_meetingsContext == null) {
+        await _loadMeetingContext();
+      }
 
-      // Inseriamo la risposta nel database manualmente
+      // 6. CHIAMATA AI CON CONTESTO
+      // Passiamo _meetingsContext alla funzione modificata prima
+      final aiReply = await _aiService.getChatResponse(
+        userQuery, 
+        contextData: _meetingsContext 
+      );
+
       final myUserId = _supabase.auth.currentUser!.id;
       
       await _supabase.from('messages').insert({
         'chat_id': widget.chatId,
-        'sender_id': myUserId, // Tecnicamente il mittente è l'utente corrente...
+        'sender_id': myUserId, 
         'content': aiReply,
-        'is_ai': true, // ...ma segniamo che è l'AI
+        'is_ai': true, 
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -87,8 +128,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (_senderNames.containsKey(userId)) {
       return _senderNames[userId]!;
     }
-    // Se è l'AI, non cerchiamo nel DB
-    // (Nota: questo controllo lo facciamo meglio nel buildBubble, ma per sicurezza)
     
     try {
       final data = await _supabase
@@ -150,17 +189,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!;
-                if (messages.isEmpty) return const Center(child: Text("Nessun messaggio"));
+                if (messages.isEmpty) return const Center(child: Text("Nessun messaggio. Scrivi @ai per chiedere aiuto!", style: TextStyle(color: Colors.grey)));
 
                 return ListView.builder(
                   controller: _scrollController,
-                  reverse: true, // Importante: i messaggi nuovi sono in basso
+                  reverse: true,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     
-                    // Se non è mio e non è AI, cerco il nome
                     if (!msg.isMine && !msg.isAi && !_senderNames.containsKey(msg.senderId)) {
                       _getSenderName(msg.senderId);
                     }
@@ -171,7 +209,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
           ),
           
-          // Indicatore AI sta pensando...
           if (_isAiThinking)
              Padding(
                padding: const EdgeInsets.all(8.0),
@@ -180,7 +217,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                  children: [
                    const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2)),
                    const SizedBox(width: 8),
-                   Text("L'assistente sta scrivendo...", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                   Text("Sto leggendo i meeting e scrivendo...", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                  ],
                ),
              ),

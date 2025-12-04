@@ -49,4 +49,16 @@ class CalendarService {
   Future<void> deleteEvent(String eventId) async {
     await _supabase.from('calendar_events').delete().eq('id', eventId);
   }
+
+  // Assicurati di importare calendar_event_model.dart e supabase_flutter
+
+  Future<void> createEvent(CalendarEvent event) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) throw Exception("Utente non loggato");
+
+    // Usa il toMap che hai definito nel Model
+    await Supabase.instance.client
+        .from('calendar_events') // Assicurati che la tabella su Supabase si chiami così
+        .insert(event.toMap(user.id));
+  }
 }

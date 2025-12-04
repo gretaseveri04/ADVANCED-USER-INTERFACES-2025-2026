@@ -94,21 +94,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- 2. LA LOGICA DI REGISTRAZIONE ---
-  Future<void> _toggleRecording() async {
+Future<void> _toggleRecording() async {
+    // Se sta già elaborando, ignora i click
     if (_isProcessing) return;
 
     if (!_isRecording) {
-      // START
+      // --- START REGISTRAZIONE ---
       try {
         print("🎙️ Avvio registrazione...");
         await _audioService.startRecording();
         setState(() => _isRecording = true);
       } catch (e) {
         print("❌ Errore avvio: $e");
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore avvio: $e")),
+        );
       }
     } else {
-      // STOP
+      // --- STOP REGISTRAZIONE & ELABORAZIONE ---
       setState(() {
         _isRecording = false;
         _isProcessing = true;
@@ -117,60 +120,89 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         print("🛑 Stop registrazione...");
         
-        // 1. Ottieni il percorso del file
+        // 1. Ottieni il file audio
         final path = await _audioService.stopRecording();
         
         if (path != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Elaborazione audio...")),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Elaborazione audio & AI in corso...")),
+            );
+          }
 
           Uint8List audioBytes;
-
-          // --- LOGICA IBRIDA (WEB vs MOBILE) ---
+          // Gestione differenziata Web vs Mobile
           if (path.startsWith('http') || path.startsWith('blob')) {
-             // SIAMO SU WEB (Chrome)
              final response = await http.get(Uri.parse(path));
              audioBytes = response.bodyBytes;
           } else {
-             // SIAMO SU MOBILE (iPhone/Android)
-             // Leggiamo il file fisico dal disco del telefono
              final file = File(path);
              audioBytes = await file.readAsBytes();
           }
-          // -------------------------------------
 
-          // 2. Trascrivi con Azure
-          print("🧠 Invio ad Azure...");
-          // Usiamo 'recording.m4a' perché su iPhone si registra in m4a
+          // 2. Trascrizione (Speech-to-Text)
+          print("🧠 Invio ad Azure/OpenAI per trascrizione...");
           final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a'); 
           print("✅ Trascrizione: $transcript");
 
-          // 3. Carica su Supabase
-          print("☁️ Upload...");
-          final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
+          // 3. Analisi Intelligente (Voice-to-Calendar) - VIA CODICE
+          print("📅 Analisi calendario (Regex) in corso...");
+          
+          // Usiamo la nostra nuova funzione invece dell'AI
+          final detectedEvent = _analyzeTextForMeeting(transcript);
+          
+          if (detectedEvent != null) {
+            // --- CASO A: EVENTO TROVATO ---
+            
+            // Salvataggio nel DB Calendario
+            await _calendarService.createEvent(detectedEvent);
+            
+            // Feedback Utente
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: Colors.deepPurple, 
+                  content: Text("📅 Evento creato: ${detectedEvent.title} per il ${DateFormat('d MMM').format(detectedEvent.startTime)}"),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          } else {
+             // --- CASO B: NESSUN EVENTO TROVATO ---
+             print("⚠️ Nessuna data specifica + 'meeting' trovata.");
+          }
 
-          // 4. Salva nel DB
-          final defaultTitle = "Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
+          // 4. Salvataggio Meeting (Memoria Storica)
+          // Carica audio su Storage
+          final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
+          
+          // --- CORREZIONE QUI SOTTO ---
+          // Usa il titolo dell'evento rilevato se esiste, altrimenti un default con l'ora
+          final defaultTitle = detectedEvent != null 
+              ? "Meeting: ${DateFormat('MMMM d').format(detectedEvent.startTime)}" 
+              : "Meeting ${DateFormat('HH:mm').format(DateTime.now())}";
+
+          // Salva nel DB Meetings
           await _meetingRepo.saveMeeting(
             title: defaultTitle,
             transcript: transcript,
             audioUrl: audioUrl,
           );
 
+          // 5. Aggiorna la UI
           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(backgroundColor: Colors.green, content: Text("Meeting salvato!")),
-            );
-             _loadEvents();
+             _loadEvents(); // Ricarica la lista eventi orizzontale
           }
         }
       } catch (e) {
-        print("❌ ERRORE: $e");
+        print("❌ ERRORE GLOBALE: $e");
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text("Errore: $e")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Colors.red, content: Text("Errore: $e")),
+          );
         }
       } finally {
+        // Ripristina stato bottone
         if (mounted) setState(() => _isProcessing = false);
       }
     }
@@ -446,5 +478,107 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  // --- NUOVA LOGICA: Estrazione Eventi via Codice (Regex) ---
+
+  /// Cerca pattern tipo "meeting on Friday", "meeting next Monday", "December 12th meeting"
+  CalendarEvent? _analyzeTextForMeeting(String text) {
+    final lowerText = text.toLowerCase();
+    
+    // 1. Controllo base: deve contenere la parola "meeting"
+    if (!lowerText.contains('meeting')) return null;
+
+    final now = DateTime.now();
+    DateTime? eventDate;
+
+    // --- CASE A: Giorni della settimana (es. "next friday", "on monday") ---
+    // Regex per catturare "next friday", "on monday", o solo "monday"
+    final dayRegex = RegExp(r'(next\s+)?(on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)');
+    final dayMatch = dayRegex.firstMatch(lowerText);
+
+    if (dayMatch != null) {
+      final isNext = dayMatch.group(1) != null; // C'è scritto "next"?
+      final dayName = dayMatch.group(3)!; // es. "friday"
+      eventDate = _getDateFromDayName(dayName, isNext: isNext);
+    }
+
+    // --- CASE B: Date specifiche (es. "december 12", "january 5th") ---
+    // Se non abbiamo trovato un giorno della settimana, cerchiamo una data
+    if (eventDate == null) {
+      final dateRegex = RegExp(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(st|nd|rd|th)?');
+      final dateMatch = dateRegex.firstMatch(lowerText);
+      
+      if (dateMatch != null) {
+        final monthName = dateMatch.group(1)!;
+        final dayNumber = int.parse(dateMatch.group(2)!);
+        eventDate = _getDateFromMonthDay(monthName, dayNumber);
+      }
+    }
+
+    // Se abbiamo trovato una data valida, creiamo l'evento
+    if (eventDate != null) {
+      // Impostiamo l'orario di default (es. 10:00 AM)
+      final startTime = DateTime(eventDate.year, eventDate.month, eventDate.day, 10, 0);
+      final endTime = startTime.add(const Duration(hours: 1));
+
+      return CalendarEvent(
+        title: "Meeting (Detected)",
+        description: "Auto-generated from transcript: \"$text\"",
+        startTime: startTime,
+        endTime: endTime,
+        isAllDay: false,
+      );
+    }
+
+    return null;
+  }
+
+  /// Converte "monday" -> DateTime del prossimo lunedì
+  DateTime _getDateFromDayName(String dayName, {bool isNext = false}) {
+    final days = {
+      'monday': DateTime.monday,
+      'tuesday': DateTime.tuesday,
+      'wednesday': DateTime.wednesday,
+      'thursday': DateTime.thursday,
+      'friday': DateTime.friday,
+      'saturday': DateTime.saturday,
+      'sunday': DateTime.sunday,
+    };
+
+    final now = DateTime.now();
+    final targetWeekday = days[dayName]!;
+    
+    // Calcolo giorni di differenza
+    int daysDiff = targetWeekday - now.weekday;
+    if (daysDiff <= 0) {
+      daysDiff += 7; // Se è oggi o passato, vai alla prossima settimana
+    }
+    
+    if (isNext) {
+      daysDiff += 7; // "Next Friday" solitamente salta quello imminente
+    }
+
+    return now.add(Duration(days: daysDiff));
+  }
+
+  /// Converte "december 12" -> DateTime corretto
+  DateTime _getDateFromMonthDay(String monthName, int day) {
+    final months = {
+      'january': 1, 'february': 2, 'march': 3, 'april': 4,
+      'may': 5, 'june': 6, 'july': 7, 'august': 8,
+      'september': 9, 'october': 10, 'november': 11, 'december': 12
+    };
+
+    final now = DateTime.now();
+    final month = months[monthName]!;
+    
+    // Se il mese è passato (es. siamo a Dicembre e dicono "January"), è l'anno prossimo
+    int year = now.year;
+    if (month < now.month) {
+      year++;
+    }
+
+    return DateTime(year, month, day);
   }
 }
