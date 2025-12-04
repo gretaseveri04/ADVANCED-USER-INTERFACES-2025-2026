@@ -49,4 +49,23 @@ class AuthService {
       throw Exception('Logout failed: $e');
     }
   }
+
+  // All'interno della tua classe AuthService
+
+Future<bool> signInWithGoogle() async {
+  try {
+    // Modifica la chiamata di login aggiungendo lo scope del calendario
+    await Supabase.instance.client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'tuo-schema-app://login-callback', // O il tuo URL di redirect
+      scopes: 'https://www.googleapis.com/auth/calendar', // <--- FONDAMENTALE
+      // Nota: se usi 'queryParams', access_type=offline serve per il refresh token
+      queryParams: {'access_type': 'offline', 'prompt': 'consent'},
+    );
+    return true;
+  } catch (e) {
+    print('Errore Login: $e');
+    return false;
+  }
+}
 }

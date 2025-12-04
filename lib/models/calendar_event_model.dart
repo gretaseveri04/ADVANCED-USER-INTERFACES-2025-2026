@@ -5,6 +5,7 @@ class CalendarEvent {
   final DateTime startTime;
   final DateTime endTime;
   final bool isAllDay;
+  final String? googleEventId; // <--- NUOVO CAMPO
 
   CalendarEvent({
     this.id,
@@ -13,6 +14,7 @@ class CalendarEvent {
     required this.startTime,
     required this.endTime,
     this.isAllDay = false,
+    this.googleEventId,
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class CalendarEvent {
       startTime: DateTime.parse(json['start_time']).toLocal(),
       endTime: DateTime.parse(json['end_time']).toLocal(),
       isAllDay: json['is_all_day'] ?? false,
+      googleEventId: json['google_event_id'], // Mappa dal DB
     );
   }
 
@@ -34,8 +37,22 @@ class CalendarEvent {
       'start_time': startTime.toUtc().toIso8601String(),
       'end_time': endTime.toUtc().toIso8601String(),
       'is_all_day': isAllDay,
+      'google_event_id': googleEventId, // Salva su DB
     };
   }
   
   Duration get duration => endTime.difference(startTime);
+
+  // Metodo utile per copiare l'oggetto aggiungendo l'ID Google dopo la creazione
+  CalendarEvent copyWith({String? googleEventId}) {
+    return CalendarEvent(
+      id: id,
+      title: title,
+      description: description,
+      startTime: startTime,
+      endTime: endTime,
+      isAllDay: isAllDay,
+      googleEventId: googleEventId ?? this.googleEventId,
+    );
+  }
 }

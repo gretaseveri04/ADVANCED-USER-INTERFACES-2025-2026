@@ -175,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final detectedEvent = _analyzeTextForMeeting(transcript);
           
           if (detectedEvent != null) {
-            await _calendarService.createEvent(detectedEvent);
+            await _calendarService.addEvent(detectedEvent);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

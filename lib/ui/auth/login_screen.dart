@@ -60,19 +60,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _googleSignIn() async {
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.flutterquickstart://login-callback/',
+  try {
+    await Supabase.instance.client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'io.supabase.flutterquickstart://login-callback/',
+      // 1. Aggiungiamo lo scope per poter SCRIVERE nel calendario
+      scopes: 'https://www.googleapis.com/auth/calendar',
+      // 2. Query params importanti per ottenere il refresh token (accesso offline)
+      queryParams: {
+        'access_type': 'offline', 
+        'prompt': 'consent', 
+      },
+    );
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Errore Google: $e")),
       );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore Google: $e")),
-        );
-      }
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

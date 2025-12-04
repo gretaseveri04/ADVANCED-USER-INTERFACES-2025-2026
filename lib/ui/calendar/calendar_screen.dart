@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+// Aggiusta questi import in base alla tua struttura cartelle reale
 import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/models/calendar_event_model.dart';
 
@@ -36,7 +37,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } catch (e) {
       debugPrint("Errore caricamento eventi: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -81,9 +84,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final selectedEvents = _eventsByDay[_selectedDay] ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FF), // Sfondo unificato
+      backgroundColor: const Color(0xFFF8F8FF), 
       
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -132,7 +134,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      // ------------------------
 
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
@@ -148,7 +149,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.03), // Ombra soft
+                          color: Colors.black.withOpacity(0.03), 
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -360,7 +361,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 20),
                     
-                    // Date Picker Button style
                     InkWell(
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -478,7 +478,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          backgroundColor: Colors.black, // Bottone nero stile "Soft UI"
+                          backgroundColor: Colors.black, 
                           foregroundColor: Colors.white,
                           elevation: 0,
                         ),
@@ -498,6 +498,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           final fullDescription = 
                               "Location: ${locationController.text}\nAI Suggestion: ${suggestionController.text}";
 
+                          // Creiamo l'oggetto evento (senza ID Google per ora)
                           final event = CalendarEvent(
                             title: titleController.text.trim(),
                             description: fullDescription,
@@ -506,6 +507,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             isAllDay: false,
                           );
 
+                          // Chiamiamo il servizio che gestirà sia Google che Supabase
                           await _service.addEvent(event);
 
                           if (mounted) {
@@ -722,7 +724,7 @@ class _EventCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E1), // Giallo paglierino molto soft
+                  color: const Color(0xFFFFF8E1), 
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
