@@ -23,3 +23,7 @@ workflows:
       email:
         recipients:
           - ariannabalduccii@gmail.com
+    code_signing:
+      ios_signing:
+        distribution_type: developer
+        bundle_identifier: com.example.focusmate
