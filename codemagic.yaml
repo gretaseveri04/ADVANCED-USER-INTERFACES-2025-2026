@@ -1,0 +1,25 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Build iOS .ipa
+        script: |
+          flutter build ios --release --no-codesign
+          # Codemagic handles signing later
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+
+    publishing:
+      email:
+        recipients:
+          - ariannabalduccii@gmail.com
