@@ -57,3 +57,11 @@ flutter_icons:
   image_path: "assets/images/logo.png" # Deve corrispondere a dove hai messo l'immagine nel Passo 1
   adaptive_icon_background: "#ffffff" # Sfondo bianco per Android (opzionale)
   adaptive_icon_foreground: "assets/images/logo.png"
+
+scripts:
+  - name: Build iOS
+    script: |
+      # Imposta l'identificatore del bundle corretto e le info di code signing prima del build
+      # ...
+      flutter build ipa --release \
+        --export-options-plist=$CM_BUILD_DIR/ios/ExportOptions.plist
