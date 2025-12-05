@@ -67,7 +67,7 @@ flutter {
 // --- DIPENDENZE AGGIUNTE QUI IN FONDO ---
 dependencies {
     // Dipendenza standard per Kotlin (usa la versione definita nel file root)
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
 
     // Le librerie che hai richiesto per Liste e Google Calendar
     implementation "androidx.recyclerview:recyclerview:1.2.1"
