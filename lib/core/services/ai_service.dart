@@ -1,19 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:limitless_app/config/keys.dart'; // Usa la nuova classe AzureConfig
+import 'package:limitless_app/config/keys.dart'; 
 
 class AIService {
   
-  // Messaggio di sistema per istruire l'AI sul suo ruolo
   static const Map<String, String> _systemMessage = {
     "role": "system",
     "content": "Sei un assistente AI specializzato per 'Limitless App'. Il tuo compito è aiutare l'utente a gestire le sue riunioni, estrarre task, riassumere trascrizioni e rispondere a domande sui meeting passati. Sii professionale, conciso e utile."
   };
 
-  // Funzione per inviare messaggi alla Chat (GPT-4o su Azure)
   static Future<String> sendMessage(String userMessage) async {
     
-    // Costruiamo l'URL specifico di Azure usando la configurazione in keys.dart
     final url = "${AzureConfig.endpoint}/openai/deployments/${AzureConfig.gptDeploymentName}/chat/completions?api-version=2024-02-01";
 
     try {
@@ -21,15 +18,15 @@ class AIService {
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
-          'api-key': AzureConfig.apiKey, // Header specifico Azure
+          'api-key': AzureConfig.apiKey, 
         },
         body: jsonEncode({
           "messages": [
             _systemMessage,
             {"role": "user", "content": userMessage}
           ],
-          "max_tokens": 500,    // Lunghezza massima risposta
-          "temperature": 0.7,   // Creatività (0.7 è bilanciato)
+          "max_tokens": 500,    
+          "temperature": 0.7,   
         }),
       );
 

@@ -14,24 +14,19 @@ class AudioRecordingService {
   Future<void> startRecording() async {
     if (!await hasPermission()) return;
 
-    // --- LOGICA MOBILE ---
-    // Troviamo una cartella temporanea sicura sull'iPhone
     final Directory tempDir = await getTemporaryDirectory();
     final String filePath = '${tempDir.path}/temp_recording.m4a';
 
-    // Configuriamo per alta qualità vocale
     const config = RecordConfig(
-      encoder: AudioEncoder.aacLc, // Ottimo per iOS
+      encoder: AudioEncoder.aacLc, 
       sampleRate: 44100,
       bitRate: 128000,
     );
 
-    // Se stiamo già registrando, fermiamo prima
     if (await _audioRecorder.isRecording()) {
       await _audioRecorder.stop();
     }
 
-    // Avvia salvando nel file
     await _audioRecorder.start(config, path: filePath);
   }
 

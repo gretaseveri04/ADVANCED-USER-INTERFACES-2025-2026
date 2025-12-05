@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 
 class OpenAIService {
   
-  // --- 1. FUNZIONE PER TRASCIVERE (Audio -> Testo) ---
   Future<String> transcribeAudioBytes(Uint8List audioBytes, String filename) async {
     final url = "${AzureConfig.endpoint}/openai/deployments/${AzureConfig.whisperDeploymentName}/audio/transcriptions?api-version=2024-06-01";
     
@@ -17,7 +16,7 @@ class OpenAIService {
       final request = http.MultipartRequest("POST", Uri.parse(url));
       
       request.headers['api-key'] = AzureConfig.apiKey;
-      request.fields['language'] = 'en'; // Inglese per evitare il coreano
+      request.fields['language'] = 'en'; 
 
       request.files.add(http.MultipartFile.fromBytes(
         'file', 
@@ -41,15 +40,11 @@ class OpenAIService {
     }
   }
 
-  // --- 2. FUNZIONE PER CHATTARE (Testo -> Risposta AI) ---
-  // QUESTA È QUELLA CHE MANCAVA!
   Future<String> getChatResponse(String userMessage, {String? contextData}) async {
     final url = "${AzureConfig.endpoint}/openai/deployments/${AzureConfig.gptDeploymentName}/chat/completions?api-version=2024-02-01";
     
-    // Costruiamo il System Prompt
     String systemInstruction = "Sei un assistente AI utile e conciso per un team.";
     
-    // Se abbiamo dei dati sui meeting, li iniettiamo nel cervello dell'AI
     if (contextData != null && contextData.isNotEmpty) {
       systemInstruction += """
       
@@ -74,14 +69,14 @@ class OpenAIService {
           "messages": [
             {
               "role": "system", 
-              "content": systemInstruction // Qui passiamo la memoria
+              "content": systemInstruction 
             },
             {
               "role": "user", 
               "content": userMessage
             }
           ],
-          "max_tokens": 500, // Aumentato un po' per permettere riassunti
+          "max_tokens": 500, 
           "temperature": 0.7,
         }),
       );
@@ -97,14 +92,12 @@ class OpenAIService {
       return "Non riesco a connettermi al servizio AI.";
     }
   }
-  
+
   Future<Map<String, dynamic>?> extractEventDetails(String text) async {
     try {
       final now = DateTime.now();
-      // Formattiamo la data in modo inequivocabile
       final String todayStr = DateFormat('yyyy-MM-dd (EEEE)').format(now);
       
-      // Prompt potenziato: Istruzioni in Inglese (più preciso per le date) e regole rigide sul JSON
       final systemPrompt = """
       You are a smart assistant. Today is $todayStr.
       Analyze the user's input. If they mention an event with a specific time/date, extract the details into a JSON object.
@@ -126,7 +119,6 @@ class OpenAIService {
       If no event is found, return exactly: {}
       """;
 
-      // Assicurati di avere la tua chiave qui o nelle variabili d'ambiente
       const apiKey = 'EuHU0Q57ppItyHjGPJAKQTahO1Ze3bANdmW6ietwb0vwYztiGNoJJQQJ99BKACfhMk5XJ3w3AAAAACOGfZEA'; 
 
       final response = await http.post(
@@ -136,12 +128,12 @@ class OpenAIService {
           'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
-          "model": "gpt-3.5-turbo", // Se hai accesso a gpt-4 usa quello, è infallibile sulle date
+          "model": "gpt-3.5-turbo", 
           "messages": [
             {"role": "system", "content": systemPrompt},
             {"role": "user", "content": text}
           ],
-          "temperature": 0.0 // Zero creatività, massima precisione
+          "temperature": 0.0 
         }),
       );
 
@@ -149,15 +141,13 @@ class OpenAIService {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         String content = data['choices'][0]['message']['content'];
         
-        // PULIZIA PROFONDA: Rimuove qualsiasi cosa non sia JSON
-        // A volte GPT scrive "Here is the json: { ... }" -> Noi prendiamo solo ciò che è tra le prime e ultime graffe
         final startIndex = content.indexOf('{');
         final endIndex = content.lastIndexOf('}');
         
         if (startIndex != -1 && endIndex != -1) {
           content = content.substring(startIndex, endIndex + 1);
         } else {
-          return null; // Non ha trovato graffe
+          return null; 
         }
         
         final decodedMap = jsonDecode(content);

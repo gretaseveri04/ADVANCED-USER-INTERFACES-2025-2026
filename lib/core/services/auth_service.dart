@@ -50,16 +50,13 @@ class AuthService {
     }
   }
 
-  // All'interno della tua classe AuthService
 
 Future<bool> signInWithGoogle() async {
   try {
-    // Modifica la chiamata di login aggiungendo lo scope del calendario
     await Supabase.instance.client.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: 'tuo-schema-app://login-callback', // O il tuo URL di redirect
-      scopes: 'https://www.googleapis.com/auth/calendar', // <--- FONDAMENTALE
-      // Nota: se usi 'queryParams', access_type=offline serve per il refresh token
+      redirectTo: 'tuo-schema-app://login-callback', 
+      scopes: 'https://www.googleapis.com/auth/calendar', 
       queryParams: {'access_type': 'offline', 'prompt': 'consent'},
     );
     return true;

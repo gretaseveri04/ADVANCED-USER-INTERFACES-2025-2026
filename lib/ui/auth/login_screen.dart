@@ -176,18 +176,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- PULSANTE GOOGLE AGGIORNATO (Versione Grande) ---
               SizedBox(
-                width: double.infinity, // Occupa tutta la larghezza come gli altri campi
+                width: double.infinity, 
                 child: OutlinedButton.icon(
                   onPressed: _googleSignIn,
                   style: OutlinedButton.styleFrom(
-                    // Padding verticale 18 per matchare esattamente l'altezza degli altri
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    side: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5), // Bordo grigio chiaro
+                    side: const BorderSide(color: Color(0xFFE0E0E0), width: 1.5), 
                     backgroundColor: Colors.white,
                     elevation: 0,
                   ),
@@ -199,14 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: const Text(
                     "Sign in with Google",
                     style: TextStyle(
-                      fontSize: 18, // Stessa dimensione del font di "Continue"
+                      fontSize: 18,
                       color: Colors.black87, 
                       fontWeight: FontWeight.w600
                     ),
                   ),
                 ),
               ),
-              // ----------------------------------
 
               const SizedBox(height: 30),
 

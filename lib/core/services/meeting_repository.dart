@@ -5,17 +5,14 @@ import 'package:limitless_app/models/meeting_model.dart';
 class MeetingRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Carica i dati grezzi (Bytes) invece del file
   Future<String> uploadAudioBytes(Uint8List bytes) async {
     final user = _supabase.auth.currentUser;
     if (user == null) throw Exception("Utente non loggato");
 
-    // Genera nome file unico
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.webm'; // Su Chrome è spesso webm o mp3
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.webm'; 
     final path = '${user.id}/$fileName';
 
     try {
-      // Usa uploadBinary che funziona sia su Web che Mobile
       await _supabase.storage.from('meeting_recordings').uploadBinary(
         path,
         bytes,
@@ -28,7 +25,6 @@ class MeetingRepository {
     }
   }
 
-  // Questo rimane uguale
   Future<void> saveMeeting({
     required String title,
     required String transcript,

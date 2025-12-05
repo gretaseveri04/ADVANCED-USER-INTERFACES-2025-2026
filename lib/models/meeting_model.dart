@@ -15,7 +15,6 @@ class Meeting {
     required this.category,
   });
 
-  // Questo serve per trasformare i dati di Supabase (JSON) in oggetto Dart
   factory Meeting.fromJson(Map<String, dynamic> json) {
     return Meeting(
       id: json['id'] ?? '',
