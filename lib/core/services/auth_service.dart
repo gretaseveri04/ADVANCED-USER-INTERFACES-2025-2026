@@ -1,7 +1,12 @@
+import 'dart:io'; // Serve per riconoscere se siamo su iOS
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final SupabaseClient supabase = Supabase.instance.client;
+
+  // ⚠️ IMPORTANTE: Incolla qui lo stesso Client ID iOS che hai messo nel CalendarService
+  static const String _iOSClientId = '457158269786-1tlbj87qdjbp8qelhajciqv4uql4m36d.apps.googleusercontent.com';
 
   Future<AuthResponse> login(String email, String password) async {
     try {
@@ -44,25 +49,52 @@ class AuthService {
 
   Future<void> logout() async {
     try {
+      // Logout sia da Supabase che da Google per pulire tutto
       await supabase.auth.signOut();
+      await GoogleSignIn().signOut();
     } catch (e) {
       throw Exception('Logout failed: $e');
     }
   }
 
+  // --- QUESTA È LA FUNZIONE CHE DEVI CAMBIARE ---
+  Future<bool> signInWithGoogle() async {
+    try {
+      // 1. Configurazione Nativa (uguale al CalendarService)
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: Platform.isIOS ? _iOSClientId : null,
+        // Richiediamo l'accesso al calendario SUBITO, durante il login
+        scopes: ['https://www.googleapis.com/auth/calendar'], 
+      );
 
-Future<bool> signInWithGoogle() async {
-  try {
-    await Supabase.instance.client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'tuo-schema-app://login-callback', 
-      scopes: 'https://www.googleapis.com/auth/calendar', 
-      queryParams: {'access_type': 'offline', 'prompt': 'consent'},
-    );
-    return true;
-  } catch (e) {
-    print('Errore Login: $e');
-    return false;
+      // 2. Apre il popup nativo di iOS (niente browser localhost!)
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        return false; // L'utente ha annullato
+      }
+
+      // 3. Otteniamo i token di sicurezza da Google
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final accessToken = googleAuth.accessToken;
+      final idToken = googleAuth.idToken;
+
+      if (accessToken == null || idToken == null) {
+        throw 'Nessun token Google trovato.';
+      }
+
+      // 4. Passiamo questi token a Supabase
+      // Supabase capisce che l'utente è valido e lo logga nel database
+      await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      return true;
+    } catch (e) {
+      print('Errore Login Google: $e');
+      return false;
+    }
   }
-}
 }

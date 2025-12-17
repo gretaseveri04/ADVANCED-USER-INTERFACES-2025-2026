@@ -8,6 +8,7 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
+  extension_google_sign_in_as_googleapis_auth: ^2.0.7
   flutter:
     sdk: flutter
 

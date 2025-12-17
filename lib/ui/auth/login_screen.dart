@@ -23,12 +23,11 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _authStream = Supabase.instance.client.auth.onAuthStateChange;
     
-    // Ascoltatore che porta alla Home dopo il login (es. Google redirect)
+    // Questo ascoltatore serve ancora come sicurezza: se Supabase rileva un cambio di stato, entra.
     _authStream.listen((data) {
       if (data.session != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-        );
+        // Controlliamo se siamo già sulla schermata giusta per evitare doppi push
+        // Ma per sicurezza lasciamo che sia la logica dei pulsanti a guidare principalmente
       }
     });
   }
@@ -59,27 +58,35 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // --- ECCO LA MODIFICA FONDAMENTALE ---
   Future<void> _googleSignIn() async {
-  try {
-    await Supabase.instance.client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'io.supabase.flutterquickstart://login-callback/',
-      // 1. Aggiungiamo lo scope per poter SCRIVERE nel calendario
-      scopes: 'https://www.googleapis.com/auth/calendar',
-      // 2. Query params importanti per ottenere il refresh token (accesso offline)
-      queryParams: {
-        'access_type': 'offline', 
-        'prompt': 'consent', 
-      },
-    );
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Errore Google: $e")),
-      );
+    setState(() => loading = true); // Mostra lo spinner
+    try {
+      // Invece di chiamare Supabase direttamente (che apre Safari),
+      // chiamiamo il nostro AuthService che usa il plugin Nativo.
+      final success = await AuthService().signInWithGoogle();
+
+      if (success && mounted) {
+        // Se il login ha avuto successo, naviga alla Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainLayout()),
+        );
+      } else {
+        // Se l'utente ha annullato il login o c'è stato un errore silenzioso
+        if (mounted) {
+           setState(() => loading = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore Google: $e")),
+        );
+        setState(() => loading = false);
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity, 
                 child: OutlinedButton.icon(
-                  onPressed: _googleSignIn,
+                  onPressed: _googleSignIn, // Ora chiama la funzione corretta
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
