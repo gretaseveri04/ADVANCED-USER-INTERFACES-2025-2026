@@ -30,9 +30,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // --- MODIFICA 1: Sfondo colorato uniformato ---
       backgroundColor: const Color(0xFFF8F8FF), 
-      // ----------------------------------------------
       
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -102,8 +100,6 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
             );
           }
           
-          // --- MODIFICA 2: ListView.builder invece di separated ---
-          // Usiamo le card, quindi non servono i divisori
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: conversations.length,
@@ -121,13 +117,46 @@ class _ConversationTile extends StatelessWidget {
   final ChatRoom chat;
   const _ConversationTile({required this.chat});
 
+  // --- MAPPA LOGHI LOCALE ---
+  static const Map<String, String> _companyLogos = {
+    'Politecnico di Milano': 'assets/images/politecnicodimilano.png',
+    'Politecnico di Torino': 'assets/images/politecnicoditorino.png',
+    'Google': 'assets/images/google.png',
+    'Amazon': 'assets/images/amazon.png',
+    'Apple': 'assets/images/apple.png',
+    'Samsung': 'assets/images/samsung.png',
+  };
+
   @override
   Widget build(BuildContext context) {
     final displayName = chat.name ?? "Chat Privata";
     final avatarColor = Colors.primaries[displayName.hashCode % Colors.primaries.length];
     final initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : "?";
 
-    // --- MODIFICA 3: Design a Card (Riquadro Bianco) ---
+    // --- LOGICA PER DETERMINARE L'IMMAGINE ---
+    ImageProvider? backgroundImage;
+    
+    // 1. Puliamo il nome da "Company: "
+    String cleanName = displayName.replaceAll(RegExp(r'^Company:\s*', caseSensitive: false), '').trim();
+
+    // 2. Cerchiamo se esiste un logo locale per questa azienda
+    String? localAssetPath;
+    for (final key in _companyLogos.keys) {
+      if (cleanName.toLowerCase() == key.toLowerCase()) {
+        localAssetPath = _companyLogos[key];
+        break;
+      }
+    }
+
+    if (localAssetPath != null) {
+      // CASO A: È un'azienda con logo
+      backgroundImage = AssetImage(localAssetPath);
+    } else if (chat.avatarUrl != null) {
+      // CASO B: È un utente con foto profilo (URL)
+      backgroundImage = NetworkImage(chat.avatarUrl!);
+    }
+    // CASO C: Nessuna immagine -> backgroundImage resta null, useremo il child
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -161,18 +190,24 @@ class _ConversationTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
+                // --- AVATAR INTELLIGENTE ---
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: avatarColor.withOpacity(0.2), // Colore più soft
-                  backgroundImage: chat.avatarUrl != null 
-                      ? NetworkImage(chat.avatarUrl!) 
-                      : null,
-                  child: chat.avatarUrl == null
+                  backgroundColor: backgroundImage != null 
+                      ? Colors.transparent // Se c'è l'immagine (logo o foto), sfondo trasparente
+                      : avatarColor.withOpacity(0.2), // Altrimenti sfondo colorato per le iniziali
+                  
+                  backgroundImage: backgroundImage, // Asset o Network Image
+                  
+                  // Child viene mostrato SOLO se non c'è un'immagine di sfondo
+                  child: backgroundImage == null
                       ? (chat.isGroup 
-                          ? Icon(Icons.groups, color: avatarColor)
-                          : Text(initials, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 18)))
+                          ? Icon(Icons.groups, color: avatarColor) // Fallback gruppo generico
+                          : Text(initials, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 18))) // Iniziali utente
                       : null,
                 ),
+                // ---------------------------
+                
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
