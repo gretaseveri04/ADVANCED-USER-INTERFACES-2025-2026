@@ -312,9 +312,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _openAddEventSheet() async {
     final titleController = TextEditingController();
     final locationController = TextEditingController(text: 'Conference Room A');
-    final suggestionController = TextEditingController(
-      text: 'Let the assistant prepare a summary and key action items.',
-    );
     
     TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
     int durationHours = 1;
@@ -457,18 +454,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: suggestionController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: 'AI Context / Notes',
-                        prefixIcon: const Icon(Icons.auto_awesome_outlined, color: Colors.grey),
-                        filled: true,
-                        fillColor: const Color(0xFFF1F1F5),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -495,8 +480,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           
                           final endTime = startTime.add(Duration(hours: durationHours));
 
-                          final fullDescription = 
-                              "Location: ${locationController.text}\nAI Suggestion: ${suggestionController.text}";
+                          final fullDescription = "Location: ${locationController.text}";
 
                           // Creiamo l'oggetto evento (senza ID Google per ora)
                           final event = CalendarEvent(
@@ -628,12 +612,13 @@ class _EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String location = "TBD";
-    String aiSuggestion = "";
     
+    // Parsing semplificato: cerca solo la Location
     final lines = event.description.split('\n');
     for (var line in lines) {
-      if (line.startsWith("Location:")) location = line.replaceAll("Location:", "").trim();
-      if (line.startsWith("AI Suggestion:")) aiSuggestion = line.replaceAll("AI Suggestion:", "").trim();
+      if (line.startsWith("Location:")) {
+        location = line.replaceAll("Location:", "").trim();
+      }
     }
     
     final duration = event.endTime.difference(event.startTime);
@@ -657,91 +642,62 @@ class _EventCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF8AC9), Color(0xFF7F7CFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: const Icon(Icons.event, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        event.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$startTimeString · $durationString',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      if (location.isNotEmpty && location != 'TBD') ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                              location,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ]
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (aiSuggestion.isNotEmpty && aiSuggestion != "No suggestions") ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E1), 
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.auto_awesome, color: Colors.orange, size: 16),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        aiSuggestion,
-                        style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
-                      ),
-                    ),
-                  ],
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF8AC9), Color(0xFF7F7CFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            ]
+              child: const Icon(Icons.event, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$startTimeString · $durationString',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  if (location.isNotEmpty && location != 'TBD') ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          location,
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ]
+                ],
+              ),
+            ),
           ],
         ),
       ),

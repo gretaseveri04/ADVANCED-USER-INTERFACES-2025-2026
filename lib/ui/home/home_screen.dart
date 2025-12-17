@@ -72,12 +72,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // --- MODIFICA QUI ---
   Future<void> _loadEvents() async {
     try {
-      final events = await _calendarService.getEventsForDay(DateTime.now());
+      final now = DateTime.now();
+      // Recupera tutti gli eventi della giornata
+      final allEvents = await _calendarService.getEventsForDay(now);
+      
+      // Filtra: mantieni solo quelli che iniziano DOPO l'orario attuale
+      final upcomingEvents = allEvents.where((event) {
+        return event.startTime.isAfter(now);
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _eventsToday = events;
+          _eventsToday = upcomingEvents;
           _isLoadingEvents = false;
         });
       }
@@ -86,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) setState(() => _isLoadingEvents = false);
     }
   }
+  // --------------------
 
   Future<String?> _showRecordingTitleDialog() async {
     final controller = TextEditingController();
@@ -221,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
       
-      // --- HEADER AGGIORNATO (Maiuscolo e Centrato) ---
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
@@ -240,11 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         title: Row(
-          mainAxisSize: MainAxisSize.min, // Questo è cruciale per centrare la Row
+          mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset('assets/images/logo.png', height: 28),
             const SizedBox(width: 10),
-            // TITOLO MAIUSCOLO
             const Text(
               "DASHBOARD", 
               style: TextStyle(
@@ -256,10 +264,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        centerTitle: true, // TITOLO CENTRATO
+        centerTitle: true,
         actions: const [], 
       ),
-      // ------------------------------------------------
       
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -267,10 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 10),
-            
-            // Profilo e Avatar qui nel corpo
             _buildUserInfo(_todayLabel),
-            
             const SizedBox(height: 25),
             _buildCalendarCard(context),
             const SizedBox(height: 25),
@@ -289,7 +293,6 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Colonna Nome + Data
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -304,11 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        
-        // Avatar Sfumato (Spostato qui)
         Container(
-          margin: const EdgeInsets.only(right: 10), // Margine leggero
-          padding: const EdgeInsets.all(3), // Spessore bordo sfumato
+          margin: const EdgeInsets.only(right: 10),
+          padding: const EdgeInsets.all(3),
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -318,13 +319,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           child: Container(
-            padding: const EdgeInsets.all(3), // Spazio bianco
+            padding: const EdgeInsets.all(3),
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white,
             ),
             child: CircleAvatar(
-              radius: 28, // Dimensione avatar
+              radius: 28,
               backgroundColor: Colors.grey.shade100,
               backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
               child: _avatarUrl == null 
@@ -340,9 +341,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ... (Il resto dei widget: _buildCalendarCard, _buildTodoList, _buildRecordSection rimane invariato)
-  // Assicurati di copiare i widget sottostanti dal codice precedente o di non cancellarli!
-  
   Widget _buildCalendarCard(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -387,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "TODAY'S TODO LIST",
+          "UPCOMING TODAY", // Modificato label per chiarezza
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),
@@ -405,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: const Center(
                     child: Text(
-                      "No events scheduled for today.\nEnjoy your free time! 🎉",
+                      "No upcoming events for today.\nFree time! 🎉",
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey),
                     ),
@@ -421,7 +419,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (e.description.contains("AI Suggestion:")) {
                        aiSuggestion = e.description.split("AI Suggestion:").last.trim();
                     }
-                    return _todoCard(timeString, e.title, aiSuggestion);
+                    return GestureDetector(
+                      onTap: () async {
+                        await Navigator.pushNamed(context, '/calendar');
+                        _loadEvents();
+                      },
+                      child: _todoCard(timeString, e.title, aiSuggestion),
+                    );
                   },
                 ),
         ),
