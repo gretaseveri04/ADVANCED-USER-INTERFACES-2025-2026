@@ -1,4 +1,4 @@
-import 'dart:io'; // Serve per riconoscere se siamo su iOS
+import 'dart:io'; 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -48,7 +48,6 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      // Logout sia da Supabase che da Google per pulire tutto
       await supabase.auth.signOut();
       await GoogleSignIn().signOut();
     } catch (e) {
@@ -56,24 +55,19 @@ class AuthService {
     }
   }
 
-  // --- QUESTA È LA FUNZIONE CHE DEVI CAMBIARE ---
   Future<bool> signInWithGoogle() async {
     try {
-      // 1. Configurazione Nativa (uguale al CalendarService)
       final GoogleSignIn googleSignIn = GoogleSignIn(
         clientId: Platform.isIOS ? _iOSClientId : null,
-        // Richiediamo l'accesso al calendario SUBITO, durante il login
         scopes: ['https://www.googleapis.com/auth/calendar'], 
       );
 
-      // 2. Apre il popup nativo di iOS (niente browser localhost!)
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
-        return false; // L'utente ha annullato
+        return false; 
       }
 
-      // 3. Otteniamo i token di sicurezza da Google
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
@@ -82,8 +76,6 @@ class AuthService {
         throw 'Nessun token Google trovato.';
       }
 
-      // 4. Passiamo questi token a Supabase
-      // Supabase capisce che l'utente è valido e lo logga nel database
       await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,

@@ -17,11 +17,11 @@ class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
 
   final List<Widget> pages = [
-    const HomeScreen(),            // 0
-    const LifelogScreen(),         // 1
-    const ChatScreen(),            // 2 (AI Chat)
-    const MessagesListScreen(),    // 3
-    const ProfileScreen(),         // 4
+    const HomeScreen(),            
+    const LifelogScreen(),         
+    const ChatScreen(),            
+    const MessagesListScreen(),    
+    const ProfileScreen(),         
   ];
 
   @override
@@ -39,9 +39,8 @@ class _MainLayoutState extends State<MainLayout> {
         },
       ),
 
-      // MODIFICA QUI: Se siamo sulla pagina Chat (index 2), nascondiamo il bottone
       floatingActionButton: _selectedIndex == 2 
-          ? null // Nasconde il bottone
+          ? null 
           : Container(
               height: 58.0, 
               width: 58.0,
@@ -64,7 +63,7 @@ class _MainLayoutState extends State<MainLayout> {
               child: FloatingActionButton(
                 onPressed: () {
                   setState(() {
-                    _selectedIndex = 2; // Porta alla Chat
+                    _selectedIndex = 2; 
                   });
                 },
                 backgroundColor: Colors.transparent,

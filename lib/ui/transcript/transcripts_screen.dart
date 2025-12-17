@@ -12,10 +12,8 @@ class TranscriptScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // --- SFONDO UNIFICATO ---
       backgroundColor: const Color(0xFFF8F8FF), 
       
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -46,7 +44,6 @@ class TranscriptScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      // ------------------------
 
       body: lifelog.transcripts.isEmpty
           ? const Center(
@@ -71,7 +68,6 @@ class TranscriptScreen extends StatelessWidget {
       String transcript,
       int index,
   ) {
-    // --- DESIGN A CARD ---
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(

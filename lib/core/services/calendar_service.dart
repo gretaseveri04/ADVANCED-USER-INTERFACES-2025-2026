@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:limitless_app/models/calendar_event_model.dart'; // Mantieni il tuo modello
+import 'package:limitless_app/models/calendar_event_model.dart'; 
 import 'package:googleapis/calendar/v3.dart' as google_calendar;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
@@ -8,24 +8,17 @@ import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sig
 class CalendarService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // --- CONFIGURAZIONE ---
-  // Inserisci qui il Client ID per iOS preso da Google Cloud Console
-  // Sarà tipo: 123456-abcde...apps.googleusercontent.com
   static const String _iOSClientId = 'INSERISCI_QUI_IL_TUO_CLIENT_ID_IOS';
 
-  // Configurazione del plugin nativo
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [google_calendar.CalendarApi.calendarEventsScope],
     clientId: Platform.isIOS ? _iOSClientId : null,
   );
 
-  /// Ottiene il client autenticato (gestisce login e token automaticamente)
   Future<google_calendar.CalendarApi?> _getGoogleCalendarClient() async {
     try {
-      // 1. Prova il login silenzioso (se l'utente ha già dato l'ok in passato)
       var googleUser = await _googleSignIn.signInSilently();
       
-      // 2. Se non basta, apre il popup nativo (chiede: "Vuoi accedere a Google?")
       googleUser ??= await _googleSignIn.signIn();
 
       if (googleUser == null) {
@@ -33,7 +26,6 @@ class CalendarService {
         return null;
       }
 
-      // 3. Crea il client HTTP autenticato grazie all'estensione
       final httpClient = await _googleSignIn.authenticatedClient();
       if (httpClient == null) return null;
 
@@ -44,15 +36,12 @@ class CalendarService {
     }
   }
 
-  // --- I TUOI METODI (ADATTATI AL NUOVO SISTEMA) ---
-
   Future<void> addEvent(CalendarEvent event) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception("Utente non loggato su Supabase");
 
     String? newGoogleId;
 
-    // A. TENTATIVO GOOGLE CALENDAR
     try {
       final calendarApi = await _getGoogleCalendarClient();
       
@@ -78,7 +67,6 @@ class CalendarService {
       print("⚠️ Impossibile sincronizzare con Google (salvo solo in locale): $e");
     }
 
-    // B. SALVATAGGIO SU SUPABASE (Come facevi prima)
     try {
       final eventToSave = event.copyWith(googleEventId: newGoogleId);
       await _supabase
@@ -86,12 +74,11 @@ class CalendarService {
           .insert(eventToSave.toMap(userId));
     } catch (e) {
       print("Errore salvataggio database Supabase: $e");
-      throw e; // Rilanciamo l'errore se fallisce il DB principale
+      throw e; 
     }
   }
 
   Future<List<CalendarEvent>> getMyEvents() async {
-    // Questo rimane identico: legge dal tuo DB Supabase
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return [];
@@ -110,7 +97,6 @@ class CalendarService {
   }
 
   Future<List<CalendarEvent>> getEventsForDay(DateTime day) async {
-    // Anche questo rimane identico
     try {
       final startOfDay = DateTime.utc(day.year, day.month, day.day, 0, 0, 0).toIso8601String();
       final endOfDay = DateTime.utc(day.year, day.month, day.day, 23, 59, 59).toIso8601String();
@@ -133,9 +119,6 @@ class CalendarService {
   }
 
   Future<void> deleteEvent(String eventId) async {
-    // Qui cancelli solo da Supabase per ora.
-    // Se volessi cancellare anche da Google, dovresti recuperare l'evento,
-    // leggere il googleEventId e chiamare calendarApi.events.delete(...)
     await _supabase.from('calendar_events').delete().eq('id', eventId);
   }
 }

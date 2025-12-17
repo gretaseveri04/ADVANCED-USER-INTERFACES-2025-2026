@@ -9,9 +9,8 @@ class TranscriptDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FF), // Sfondo unificato
+      backgroundColor: const Color(0xFFF8F8FF), 
       
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -32,7 +31,7 @@ class TranscriptDetailScreen extends StatelessWidget {
           ),
         ),
         title: Text(
-          meeting.title.toUpperCase(), // Titolo MAIUSCOLO
+          meeting.title.toUpperCase(),
           style: const TextStyle(
             fontWeight: FontWeight.bold, 
             fontSize: 16, 
@@ -42,14 +41,12 @@ class TranscriptDetailScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      // ------------------------
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header con data (Card bianca pulita)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -68,7 +65,7 @@ class TranscriptDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    "Registrato il ${meeting.createdAt.toString().split('.')[0]}",
+                    "Recorded on ${meeting.createdAt.toString().split('.')[0]}",
                     style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -76,7 +73,6 @@ class TranscriptDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
             
-            // Titolo sezione
             const Padding(
               padding: EdgeInsets.only(left: 4, bottom: 8),
               child: Text(
@@ -85,7 +81,6 @@ class TranscriptDetailScreen extends StatelessWidget {
               ),
             ),
             
-            // Box della trascrizione (Card bianca)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),

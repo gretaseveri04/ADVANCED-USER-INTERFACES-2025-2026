@@ -23,11 +23,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _authStream = Supabase.instance.client.auth.onAuthStateChange;
     
-    // Questo ascoltatore serve ancora come sicurezza: se Supabase rileva un cambio di stato, entra.
     _authStream.listen((data) {
       if (data.session != null && mounted) {
-        // Controlliamo se siamo già sulla schermata giusta per evitare doppi push
-        // Ma per sicurezza lasciamo che sia la logica dei pulsanti a guidare principalmente
       }
     });
   }
@@ -58,22 +55,17 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // --- ECCO LA MODIFICA FONDAMENTALE ---
   Future<void> _googleSignIn() async {
-    setState(() => loading = true); // Mostra lo spinner
+    setState(() => loading = true); 
     try {
-      // Invece di chiamare Supabase direttamente (che apre Safari),
-      // chiamiamo il nostro AuthService che usa il plugin Nativo.
       final success = await AuthService().signInWithGoogle();
 
       if (success && mounted) {
-        // Se il login ha avuto successo, naviga alla Home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainLayout()),
         );
       } else {
-        // Se l'utente ha annullato il login o c'è stato un errore silenzioso
         if (mounted) {
            setState(() => loading = false);
         }
@@ -186,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity, 
                 child: OutlinedButton.icon(
-                  onPressed: _googleSignIn, // Ora chiama la funzione corretta
+                  onPressed: _googleSignIn, 
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(

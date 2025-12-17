@@ -35,10 +35,9 @@ class MeetingRepository {
     await _supabase.from('meetings').insert({
       'user_id': userId,
       'title': title,
-      'transcription_text': transcript, // Assicurati che la colonna si chiami così nel DB
+      'transcription_text': transcript, 
       'audio_url': audioUrl,
       'category': 'WORK',
-      // CORREZIONE FONDAMENTALE QUI SOTTO:
       'created_at': DateTime.now().toUtc().toIso8601String(), 
     });
   }

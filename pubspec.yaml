@@ -12,32 +12,28 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Networking & APIs
   http: ^1.2.0
   supabase_flutter: ^2.3.1
 
-  # State Management & Architecture
   provider: ^6.0.0
   
-  # Local Storage & Database
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   
-  # UI & Utilities
   graphview: ^1.1.3
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
   image_picker: ^1.0.4
-  mime: ^2.0.0             # Utile per il tipo di file audio
+  mime: ^2.0.0             
   google_fonts: ^6.1.0
 
-  # Audio Recording & Permissions (Nuove dipendenze)
+
   record: ^6.1.2           
   path_provider: ^2.1.2    
   permission_handler: ^12.0.1 
 
-  googleapis: ^11.0.0       # <--- AGGIUNGI QUESTA per le API Calendar
-  googleapis_auth: ^1.4.0   # <--- AGGIUNGI QUESTA per gestire l'auth
+  googleapis: ^11.0.0       
+  googleapis_auth: ^1.4.0   
 
 dev_dependencies:
   flutter_test:
@@ -50,11 +46,10 @@ flutter:
   
   assets:
     - assets/images/
-    - mock_data/mock_responses.json
 
 flutter_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/logo.png" # Deve corrispondere a dove hai messo l'immagine nel Passo 1
-  adaptive_icon_background: "#ffffff" # Sfondo bianco per Android (opzionale)
+  image_path: "assets/images/logo.png" 
+  adaptive_icon_background: "#ffffff" 
   adaptive_icon_foreground: "assets/images/logo.png"

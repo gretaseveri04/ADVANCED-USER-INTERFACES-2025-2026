@@ -117,7 +117,6 @@ class _ConversationTile extends StatelessWidget {
   final ChatRoom chat;
   const _ConversationTile({required this.chat});
 
-  // --- MAPPA LOGHI LOCALE ---
   static const Map<String, String> _companyLogos = {
     'Politecnico di Milano': 'assets/images/politecnicodimilano.png',
     'Politecnico di Torino': 'assets/images/politecnicoditorino.png',
@@ -133,13 +132,10 @@ class _ConversationTile extends StatelessWidget {
     final avatarColor = Colors.primaries[displayName.hashCode % Colors.primaries.length];
     final initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : "?";
 
-    // --- LOGICA PER DETERMINARE L'IMMAGINE ---
     ImageProvider? backgroundImage;
     
-    // 1. Puliamo il nome da "Company: "
     String cleanName = displayName.replaceAll(RegExp(r'^Company:\s*', caseSensitive: false), '').trim();
 
-    // 2. Cerchiamo se esiste un logo locale per questa azienda
     String? localAssetPath;
     for (final key in _companyLogos.keys) {
       if (cleanName.toLowerCase() == key.toLowerCase()) {
@@ -149,13 +145,10 @@ class _ConversationTile extends StatelessWidget {
     }
 
     if (localAssetPath != null) {
-      // CASO A: È un'azienda con logo
       backgroundImage = AssetImage(localAssetPath);
     } else if (chat.avatarUrl != null) {
-      // CASO B: È un utente con foto profilo (URL)
       backgroundImage = NetworkImage(chat.avatarUrl!);
     }
-    // CASO C: Nessuna immagine -> backgroundImage resta null, useremo il child
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -190,23 +183,20 @@ class _ConversationTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                // --- AVATAR INTELLIGENTE ---
                 CircleAvatar(
                   radius: 26,
                   backgroundColor: backgroundImage != null 
-                      ? Colors.transparent // Se c'è l'immagine (logo o foto), sfondo trasparente
-                      : avatarColor.withOpacity(0.2), // Altrimenti sfondo colorato per le iniziali
+                      ? Colors.transparent 
+                      : avatarColor.withOpacity(0.2), 
                   
-                  backgroundImage: backgroundImage, // Asset o Network Image
+                  backgroundImage: backgroundImage, 
                   
-                  // Child viene mostrato SOLO se non c'è un'immagine di sfondo
                   child: backgroundImage == null
                       ? (chat.isGroup 
-                          ? Icon(Icons.groups, color: avatarColor) // Fallback gruppo generico
-                          : Text(initials, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 18))) // Iniziali utente
+                          ? Icon(Icons.groups, color: avatarColor) 
+                          : Text(initials, style: TextStyle(color: avatarColor, fontWeight: FontWeight.bold, fontSize: 18))) 
                       : null,
                 ),
-                // ---------------------------
                 
                 const SizedBox(width: 16),
                 Expanded(
@@ -219,7 +209,7 @@ class _ConversationTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        "Tocca per leggere i messaggi", 
+                        "Tap to read messages", 
                         style: TextStyle(fontSize: 12, color: Colors.grey)
                       ),
                     ],

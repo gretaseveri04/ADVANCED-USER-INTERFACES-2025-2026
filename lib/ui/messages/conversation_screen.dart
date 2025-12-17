@@ -37,15 +37,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isAiThinking = false;
   String? _meetingsContext; 
 
-  // NUOVO: Variabile per memorizzare lo stream ed evitare riconnessioni continue
   late Stream<List<ChatMessage>> _messagesStream;
+
+  final Map<String, String> _companyLogos = {
+    'Politecnico di Milano': 'assets/images/politecnicodimilano.png',
+    'Politecnico di Torino': 'assets/images/politecnicoditorino.png',
+    'Google': 'assets/images/google.png',
+    'Amazon': 'assets/images/amazon.png',
+    'Apple': 'assets/images/apple.png',
+    'Samsung': 'assets/images/samsung.png',
+  };
 
   @override
   void initState() {
     super.initState();
     _loadMeetingContext();
-    // Inizializziamo lo stream qui, UNA VOLTA SOLA.
-    // Grazie a Supabase Realtime, riceverà automaticamente i nuovi messaggi.
     _messagesStream = _chatService.getMessagesStream(widget.chatId);
   }
 
@@ -75,11 +81,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _controller.clear(); 
     try {
       await _chatService.sendMessage(widget.chatId, text);
-      
-      // OPTIONAL: Se Realtime su Supabase è lento, puoi decommentare la riga sotto
-      // per forzare un aggiornamento grafico immediato (anche se poco elegante).
-      // setState(() {}); 
-
       if (text.toLowerCase().contains("@ai")) {
         _triggerAiResponse(text);
       }
@@ -95,7 +96,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       final aiReply = await _aiService.getChatResponse(userQuery, contextData: _meetingsContext);
       final myUserId = _supabase.auth.currentUser!.id;
       
-      // Inseriamo la risposta AI. Nota: NON mettiamo 'created_at', lasciamo fare al DB.
       await _supabase.from('messages').insert({
         'chat_id': widget.chatId,
         'sender_id': myUserId, 
@@ -127,8 +127,26 @@ class _ConversationScreenState extends State<ConversationScreen> {
     } catch (e) { return "Utente"; }
   }
 
+  ImageProvider? _getChatAvatarImage() {
+    String cleanName = widget.chatName.replaceAll(RegExp(r'^Company:\s*', caseSensitive: false), '').trim();
+
+    for (final key in _companyLogos.keys) {
+      if (cleanName.toLowerCase() == key.toLowerCase()) {
+        return AssetImage(_companyLogos[key]!);
+      }
+    }
+
+    if (widget.avatarUrl != null) {
+      return NetworkImage(widget.avatarUrl!);
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final avatarImage = _getChatAvatarImage();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
       appBar: AppBar(
@@ -152,9 +170,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white,
-              backgroundImage: widget.avatarUrl != null ? NetworkImage(widget.avatarUrl!) : null,
-              child: widget.avatarUrl == null
-                  ? Text(widget.chatName.isNotEmpty ? widget.chatName[0].toUpperCase() : "?", style: const TextStyle(color: Colors.deepPurple, fontSize: 16, fontWeight: FontWeight.bold))
+              backgroundImage: avatarImage, 
+              child: avatarImage == null
+                  ? Text(
+                      widget.chatName.isNotEmpty ? widget.chatName[0].toUpperCase() : "?", 
+                      style: const TextStyle(color: Colors.deepPurple, fontSize: 16, fontWeight: FontWeight.bold)
+                    )
                   : null,
             ),
             const SizedBox(width: 12),
@@ -171,18 +192,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
       body: Column(
         children: [
           Expanded(
-            // CORREZIONE QUI: Usiamo _messagesStream invece di chiamare la funzione ogni volta
             child: StreamBuilder<List<ChatMessage>>(
               stream: _messagesStream, 
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  // Se non abbiamo dati, mostriamo un loader o niente
                   return const Center(child: CircularProgressIndicator());
                 }
                 
                 final messages = snapshot.data!;
                 
-                // Se la lista è vuota
                 if (messages.isEmpty) {
                   return const Center(child: Text("Start the conversation!", style: TextStyle(color: Colors.grey)));
                 }
@@ -224,7 +242,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
   
   Widget _buildBubble(ChatMessage msg) {
-    // ... (Il resto del codice UI rimane identico) ...
     final isMe = msg.isMine && !msg.isAi;
     final isAi = msg.isAi;
     String senderName = isAi ? "AI Assistant ✨" : (_senderNames[msg.senderId] ?? "...");

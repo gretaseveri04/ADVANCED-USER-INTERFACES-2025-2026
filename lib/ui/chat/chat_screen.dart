@@ -29,7 +29,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final OpenAIService _aiService = OpenAIService();
   final MeetingRepository _meetingRepo = MeetingRepository();
 
-  // Lista messaggi
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   
@@ -41,7 +40,6 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadMeetingContext();
     
-    // Messaggio di benvenuto iniziale
     _messages.add(ChatMessage(
       content: "Hi there! 👋 I'm your personal AI assistant. I can help with summaries, emails and more.",
       role: "assistant",
@@ -146,7 +144,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF), 
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
@@ -182,7 +179,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         centerTitle: true,
       ),
-      // ------------------------
       body: Column(
         children: [
           if (!_isContextLoaded)
@@ -224,15 +220,13 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // --- WIDGET SUGGESTIONS ---
   Widget _buildEmptyStateWithSuggestions() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const SizedBox(height: 30), // Spazio dall'alto aumentato un po'
+          const SizedBox(height: 30), 
           
-          // --- RIMOSSO IL PALLINO QUI ---
           
           const Text(
             "How can I help you today?",
@@ -247,7 +241,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 40),
           
-          // GRIGLIA SUGGESTIONS
           GridView.count(
             shrinkWrap: true,
             crossAxisCount: 2,
@@ -284,7 +277,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           
           const SizedBox(height: 30),
-          // Messaggio di benvenuto
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

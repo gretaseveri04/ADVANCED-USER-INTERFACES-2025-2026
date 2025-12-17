@@ -35,17 +35,13 @@ class _SignupScreenState extends State<SignupScreen> {
         role: roleController.text.trim(),
       );
 
-      // MODIFICA IMPORTANTE:
-      // Se 'Confirm Email' è attivo su Supabase, res.user NON è null, ma res.session SÌ è null.
       if (res.user != null) {
         if (res.session != null) {
-          // Caso ideale: email confirm disabilitato o login automatico
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const MainLayout()),
           );
         } else {
-          // Caso Supabase con conferma email attiva
           if (mounted) {
             showDialog(
               context: context,
@@ -57,8 +53,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(ctx); // Chiudi dialog
-                      Navigator.pop(context); // Torna al Login
+                      Navigator.pop(ctx); 
+                      Navigator.pop(context); 
                     },
                     child: const Text("OK"),
                   )
@@ -94,7 +90,6 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Image.asset("assets/images/logo.png", width: 80), // Opzionale
               const Text("Create Account", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
 

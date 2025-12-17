@@ -6,13 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 
-// --- IMPORTS DEI TUOI SERVIZI E MODELLI ---
 import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/models/calendar_event_model.dart';
 import 'package:limitless_app/models/meeting_model.dart';
 import 'package:limitless_app/ui/transcript/transcript_detail_screen.dart';
 
-// Import necessari per la registrazione reale (come nella Home)
 import 'package:limitless_app/core/services/audio_recording_service.dart';
 import 'package:limitless_app/core/services/meeting_repository.dart';
 import 'package:limitless_app/core/services/openai_service.dart'; 
@@ -89,15 +87,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // --- NUOVA LOGICA: GESTIONE CLICK ---
-  // --- GESTIONE CLICK ---
   Future<void> _handleEventTap(CalendarEvent event) async {
     final now = DateTime.now();
 
-    // 1. EVENTO PASSATO -> CERCA TRASCRIZIONE REALE E VAI AL TRANSCRIPT
     if (event.endTime.isBefore(now)) {
       
-      // Mostriamo un piccolo caricamento mentre cerchiamo la trascrizione
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -105,14 +99,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
 
       try {
-        // Cerchiamo nel DB se esiste una trascrizione per questa data/ora
         final realMeeting = await _fetchMeetingForEvent(event);
         
-        // Chiudiamo il caricamento
         if (mounted) Navigator.pop(context);
 
         if (realMeeting != null) {
-          // CASO A: Trascrizione trovata! Apriamo la pagina con i dati veri.
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -120,9 +111,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         } else {
-          // CASO B: Nessuna trascrizione trovata per quell'orario.
-          // Possiamo aprire la pagina vuota o mostrare un avviso.
-          // Qui apro la pagina con un avviso placeholder, ma puoi mettere uno SnackBar.
           final placeholderMeeting = Meeting(
             id: 'placeholder',
             title: event.title,
@@ -142,33 +130,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
         }
 
       } catch (e) {
-        // Errore generico
-        if (mounted) Navigator.pop(context); // chiudi loader
+        if (mounted) Navigator.pop(context); 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Errore nel recupero della trascrizione: $e")),
         );
       }
     } 
-    // 2. EVENTO FUTURO -> POPUP REGISTRAZIONE
     else {
       _openRecordingSheet(event);
     }
   }
 
-  // Questa funzione cerca nella tabella 'meetings' una registrazione
-  // che abbia una data di creazione (created_at) molto vicina all'inizio dell'evento.
   Future<Meeting?> _fetchMeetingForEvent(CalendarEvent event) async {
     final supabase = Supabase.instance.client;
     
-    // 1. Puliamo il titolo per evitare problemi con spazi vuoti
     final cleanTitle = event.title.trim();
 
-    // 2. Calcoliamo l'inizio e la fine del giorno dell'evento in UTC
-    // (Poiché event.startTime è locale grazie al tuo modello, lo riportiamo all'inizio del giorno)
     final localStartOfDay = DateTime(event.startTime.year, event.startTime.month, event.startTime.day);
     final localEndOfDay = localStartOfDay.add(const Duration(hours: 23, minutes: 59, seconds: 59));
 
-    // Convertiamo in UTC per la query al database
     final startQuery = localStartOfDay.toUtc().toIso8601String();
     final endQuery = localEndOfDay.toUtc().toIso8601String();
 
@@ -178,25 +158,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final response = await supabase
           .from('meetings')
           .select()
-          .ilike('title', cleanTitle)     // 'ilike' ignora maiuscole/minuscole
-          .gte('created_at', startQuery)  // Creato dopo l'inizio del giorno
-          .lte('created_at', endQuery)    // Creato prima della fine del giorno
-          .order('created_at', ascending: false) // Prendi il più recente
+          .ilike('title', cleanTitle)     
+          .gte('created_at', startQuery)  
+          .lte('created_at', endQuery)    
+          .order('created_at', ascending: false) 
           .limit(1)
           .maybeSingle();
 
       if (response == null) {
-        debugPrint("❌ Nessun meeting trovato. Controlla che i titoli coincidano.");
+        debugPrint("Nessun meeting trovato. Controlla che i titoli coincidano.");
         return null; 
       }
 
-      debugPrint("✅ Meeting trovato! ID: ${response['id']}");
+      debugPrint("Meeting trovato! ID: ${response['id']}");
 
-      // Creiamo l'oggetto Meeting dai dati reali
       return Meeting(
         id: response['id'].toString(),
         title: response['title'] ?? event.title,
-        // Gestiamo il caso in cui la colonna si chiami 'transcription_text' o 'transcript'
         transcription: response['transcription_text'] ?? response['transcript'] ?? "Testo non trovato",
         createdAt: DateTime.parse(response['created_at']), 
         audioUrl: response['audio_url'] ?? "",
@@ -204,12 +182,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
 
     } catch (e) {
-      debugPrint("⚠️ Errore ricerca DB: $e");
+      debugPrint("Errore ricerca DB: $e");
       return null;
     }
   }
 
-  // Apre il BottomSheet che contiene la logica di registrazione reale (identica alla Home)
   void _openRecordingSheet(CalendarEvent event) {
     showModalBottomSheet(
       context: context,
@@ -217,7 +194,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => RecordingSheet(eventTitle: event.title),
     ).then((_) {
-      // Quando chiudi il foglio, ricarica gli eventi (se l'AI ne ha creati di nuovi)
       _loadEvents();
     });
   }
@@ -288,7 +264,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Card del Calendario
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -395,7 +370,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   const SizedBox(height: 25),
                   
-                  // Header Lista Eventi
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -445,7 +419,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         itemCount: selectedEvents.length,
                         itemBuilder: (context, index) {
                           final event = selectedEvents[index];
-                          // GESTURE DETECTOR CON NUOVA LOGICA
                           return GestureDetector(
                             onTap: () => _handleEventTap(event),
                             child: _EventCard(event: event),
@@ -463,11 +436,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final titleController = TextEditingController();
     final locationController = TextEditingController(text: 'Conference Room A');
     
-    // CAMBIAMENTO QUI: Usiamo un controller per la durata in MINUTI
-    // Impostiamo 15 minuti di default, così è comodo per i test
     final durationController = TextEditingController(text: '15'); 
     
-    TimeOfDay selectedTime = TimeOfDay.now(); // Imposta l'ora attuale per comodità
+    TimeOfDay selectedTime = TimeOfDay.now(); 
     DateTime currentSelectedDate = _selectedDay;
 
     await showModalBottomSheet(
@@ -510,7 +481,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 20),
                     
-                    // Selezione Data
                     InkWell(
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -545,7 +515,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Titolo Evento
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
@@ -557,7 +526,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Riga Ora e Durata (MINUTI)
                     Row(
                       children: [
                         Expanded(
@@ -588,7 +556,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                         const SizedBox(width: 12),
                         
-                        // CAMBIAMENTO QUI: Input per MINUTI invece che ORE
                         Expanded(
                           flex: 2,
                           child: TextField(
@@ -599,7 +566,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               filled: true,
                               fillColor: const Color(0xFFF1F1F5),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              suffixText: 'min', // Etichetta minuti
+                              suffixText: 'min', 
                             ),
                           ),
                         ),
@@ -607,7 +574,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Location
                     TextField(
                       controller: locationController,
                       decoration: InputDecoration(
@@ -620,7 +586,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 24),
                     
-                    // Bottone Salva
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -636,7 +601,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onPressed: () async {
                           if (titleController.text.trim().isEmpty) return;
                           
-                          // Convertiamo l'input stringa in int (default 15 minuti se vuoto)
                           int minutes = int.tryParse(durationController.text) ?? 15;
 
                           final startTime = DateTime(
@@ -647,7 +611,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             selectedTime.minute,
                           );
                           
-                          // CAMBIAMENTO QUI: Aggiungiamo minuti, non ore
                           final endTime = startTime.add(Duration(minutes: minutes));
 
                           final fullDescription = "Location: ${locationController.text}";
@@ -781,7 +744,6 @@ class _EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     String location = "TBD";
     
-    // Parsing semplificato: cerca solo la Location
     final lines = event.description.split('\n');
     for (var line in lines) {
       if (line.startsWith("Location:")) {
@@ -873,10 +835,6 @@ class _EventCard extends StatelessWidget {
   }
 }
 
-// ==============================================================================
-//  WIDGET POPUP PER LA REGISTRAZIONE (CON LOGICA COMPLETA DALLA HOME)
-// ==============================================================================
-// Sostituisci interamente la classe RecordingSheet con questa:
 
 class RecordingSheet extends StatefulWidget {
   final String eventTitle;
@@ -887,7 +845,6 @@ class RecordingSheet extends StatefulWidget {
 }
 
 class _RecordingSheetState extends State<RecordingSheet> {
-  // Servizi
   final AudioRecordingService _audioService = AudioRecordingService();
   final OpenAIService _openAIService = OpenAIService();
   final MeetingRepository _meetingRepo = MeetingRepository();
@@ -897,14 +854,12 @@ class _RecordingSheetState extends State<RecordingSheet> {
   bool _isProcessing = false;
   String _statusMessage = "Ready to record";
 
-  // Timer per mostrare la durata (opzionale, ma carino per la UX)
   Timer? _timer;
   int _recordDuration = 0;
 
   @override
   void dispose() {
     _timer?.cancel();
-    // Se l'utente chiude il foglio mentre registra, fermiamo la registrazione
     if (_isRecording) {
       _audioService.stopRecording();
     }
@@ -935,7 +890,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
     if (_isProcessing) return;
 
     if (!_isRecording) {
-      // --- START RECORDING ---
       try {
         await _audioService.startRecording();
         _startTimer();
@@ -949,7 +903,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
         if (mounted) setState(() => _statusMessage = "Error starting: $e");
       }
     } else {
-      // --- STOP & PROCESS ---
       try {
         _stopTimer();
         if (mounted) {
@@ -963,7 +916,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
         final path = await _audioService.stopRecording();
 
         if (path != null) {
-          // 1. Leggi bytes
           Uint8List audioBytes;
           if (path.startsWith('http') || path.startsWith('blob')) {
             final response = await http.get(Uri.parse(path));
@@ -973,10 +925,8 @@ class _RecordingSheetState extends State<RecordingSheet> {
             audioBytes = await file.readAsBytes();
           }
 
-          // 2. Trascrizione OpenAI
           final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a');
 
-          // 3. Analisi AI per nuovi eventi
           final detectedEvent = _analyzeTextForMeeting(transcript);
           if (detectedEvent != null) {
             await _calendarService.addEvent(detectedEvent);
@@ -987,10 +937,8 @@ class _RecordingSheetState extends State<RecordingSheet> {
             }
           }
 
-          // 4. Upload Audio
           final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
 
-          // 5. Salvataggio su DB (con orario UTC corretto grazie alla tua fix precedente)
           await _meetingRepo.saveMeeting(
             title: widget.eventTitle,
             transcript: transcript,
@@ -1002,7 +950,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
               _isProcessing = false;
               _statusMessage = "Saved!";
             });
-            // Chiudi il foglio
             Future.delayed(const Duration(milliseconds: 800), () {
               if (mounted) Navigator.pop(context);
             });
@@ -1019,7 +966,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
     }
   }
 
-  // Logica parsing date (invariata)
   CalendarEvent? _analyzeTextForMeeting(String text) {
     final lowerText = text.toLowerCase();
     if (!lowerText.contains('meeting')) return null;
@@ -1063,7 +1009,7 @@ class _RecordingSheetState extends State<RecordingSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity, // <--- FORZA LARGHEZZA TOTALE
+      width: double.infinity, 
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1071,16 +1017,14 @@ class _RecordingSheetState extends State<RecordingSheet> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center, // Centra orizzontalmente il contenuto
+        crossAxisAlignment: CrossAxisAlignment.center, 
         children: [
-          // Maniglia Grigia
           Container(
             width: 40, height: 4,
             margin: const EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
           ),
           
-          // Titolo Evento
           Text(
             widget.eventTitle,
             textAlign: TextAlign.center,
@@ -1089,7 +1033,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
           
           const SizedBox(height: 8),
           
-          // Timer o Status
           Text(
             _isRecording ? _formatDuration(_recordDuration) : _statusMessage,
             style: TextStyle(
@@ -1101,7 +1044,6 @@ class _RecordingSheetState extends State<RecordingSheet> {
           
           const SizedBox(height: 40),
           
-          // --- TASTO REGISTRAZIONE ---
           if (_isProcessing)
              const CircularProgressIndicator()
           else
@@ -1112,11 +1054,10 @@ class _RecordingSheetState extends State<RecordingSheet> {
                 height: 80, width: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  // GRADIENTE: Se registra è Rosso/Arancio, se è fermo è Viola/Blu (Stile Home)
                   gradient: LinearGradient(
                     colors: _isRecording 
-                      ? [const Color(0xFFFF4B4B), const Color(0xFFFF9068)] // Rosso pulsante
-                      : [const Color(0xFFB476FF), const Color(0xFF7F7CFF)], // Viola Limitless
+                      ? [const Color(0xFFFF4B4B), const Color(0xFFFF9068)] 
+                      : [const Color(0xFFB476FF), const Color(0xFF7F7CFF)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1135,7 +1076,7 @@ class _RecordingSheetState extends State<RecordingSheet> {
                 ),
               ),
             ),
-          const SizedBox(height: 40), // Spazio extra in basso
+          const SizedBox(height: 40), 
         ],
       ),
     );

@@ -44,9 +44,8 @@ class _NewChatScreenState extends State<NewChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FF), // Sfondo unificato
+      backgroundColor: const Color(0xFFF8F8FF), 
       
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -74,7 +73,6 @@ class _NewChatScreenState extends State<NewChatScreen> {
         ),
         centerTitle: true,
       ),
-      // ------------------------
 
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _colleaguesFuture,
@@ -91,7 +89,6 @@ class _NewChatScreenState extends State<NewChatScreen> {
             );
           }
 
-          // Lista con Card separate
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: colleagues.length,

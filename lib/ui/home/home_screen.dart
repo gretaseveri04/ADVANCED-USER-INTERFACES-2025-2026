@@ -72,14 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- MODIFICA QUI ---
   Future<void> _loadEvents() async {
     try {
       final now = DateTime.now();
-      // Recupera tutti gli eventi della giornata
       final allEvents = await _calendarService.getEventsForDay(now);
       
-      // Filtra: mantieni solo quelli che iniziano DOPO l'orario attuale
       final upcomingEvents = allEvents.where((event) {
         return event.startTime.isAfter(now);
       }).toList();
@@ -95,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) setState(() => _isLoadingEvents = false);
     }
   }
-  // --------------------
 
   Future<String?> _showRecordingTitleDialog() async {
     final controller = TextEditingController();
@@ -385,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "UPCOMING TODAY", // Modificato label per chiarezza
+          "UPCOMING TODAY", 
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),

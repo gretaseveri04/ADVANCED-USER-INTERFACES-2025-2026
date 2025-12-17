@@ -31,7 +31,6 @@ class _LifelogScreenState extends State<LifelogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
@@ -67,7 +66,6 @@ class _LifelogScreenState extends State<LifelogScreen> {
         ),
         centerTitle: true,
       ),
-      // ------------------------
       body: FutureBuilder<List<Meeting>>(
         future: _meetingsFuture,
         builder: (context, snapshot) {
@@ -108,7 +106,7 @@ class _LifelogScreenState extends State<LifelogScreen> {
     final dateStr = DateFormat('MMM d, y • HH:mm').format(meeting.createdAt.toLocal()); 
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12), // Spazio tra le card
+      margin: const EdgeInsets.only(bottom: 12), 
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -122,7 +120,7 @@ class _LifelogScreenState extends State<LifelogScreen> {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F0FF), // Viola chiarissimo
+            color: const Color(0xFFF3F0FF), 
             borderRadius: BorderRadius.circular(16),
           ),
           child: const Icon(Icons.mic, color: Colors.deepPurple),
