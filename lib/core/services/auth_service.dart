@@ -5,7 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  // ⚠️ IMPORTANTE: Incolla qui lo stesso Client ID iOS che hai messo nel CalendarService
   static const String _iOSClientId = '457158269786-1tlbj87qdjbp8qelhajciqv4uql4m36d.apps.googleusercontent.com';
 
   Future<AuthResponse> login(String email, String password) async {

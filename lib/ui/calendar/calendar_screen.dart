@@ -1,8 +1,21 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// Aggiusta questi import in base alla tua struttura cartelle reale
+import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart'; 
+
+// --- IMPORTS DEI TUOI SERVIZI E MODELLI ---
 import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/models/calendar_event_model.dart';
+import 'package:limitless_app/models/meeting_model.dart';
+import 'package:limitless_app/ui/transcript/transcript_detail_screen.dart';
+
+// Import necessari per la registrazione reale (come nella Home)
+import 'package:limitless_app/core/services/audio_recording_service.dart';
+import 'package:limitless_app/core/services/meeting_repository.dart';
+import 'package:limitless_app/core/services/openai_service.dart'; 
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -75,6 +88,126 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // --- NUOVA LOGICA: GESTIONE CLICK ---
+  // --- GESTIONE CLICK ---
+  Future<void> _handleEventTap(CalendarEvent event) async {
+    final now = DateTime.now();
+
+    // 1. EVENTO PASSATO -> CERCA TRASCRIZIONE REALE E VAI AL TRANSCRIPT
+    if (event.endTime.isBefore(now)) {
+      
+      // Mostriamo un piccolo caricamento mentre cerchiamo la trascrizione
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        // Cerchiamo nel DB se esiste una trascrizione per questa data/ora
+        final realMeeting = await _fetchMeetingForEvent(event);
+        
+        // Chiudiamo il caricamento
+        if (mounted) Navigator.pop(context);
+
+        if (realMeeting != null) {
+          // CASO A: Trascrizione trovata! Apriamo la pagina con i dati veri.
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TranscriptDetailScreen(meeting: realMeeting),
+            ),
+          );
+        } else {
+          // CASO B: Nessuna trascrizione trovata per quell'orario.
+          // Possiamo aprire la pagina vuota o mostrare un avviso.
+          // Qui apro la pagina con un avviso placeholder, ma puoi mettere uno SnackBar.
+          final placeholderMeeting = Meeting(
+            id: 'placeholder',
+            title: event.title,
+            transcription: "Nessuna registrazione trovata per questo evento.\n"
+                           "Probabilmente non hai registrato l'audio durante questo meeting.",
+            createdAt: event.startTime,
+            audioUrl: "",
+            category: "General",
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TranscriptDetailScreen(meeting: placeholderMeeting),
+            ),
+          );
+        }
+
+      } catch (e) {
+        // Errore generico
+        if (mounted) Navigator.pop(context); // chiudi loader
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore nel recupero della trascrizione: $e")),
+        );
+      }
+    } 
+    // 2. EVENTO FUTURO -> POPUP REGISTRAZIONE
+    else {
+      _openRecordingSheet(event);
+    }
+  }
+
+  // Questa funzione cerca nella tabella 'meetings' una registrazione
+  // che abbia una data di creazione (created_at) molto vicina all'inizio dell'evento.
+  Future<Meeting?> _fetchMeetingForEvent(CalendarEvent event) async {
+    final supabase = Supabase.instance.client;
+
+    // Definiamo un margine di tolleranza (es. cerchiamo registrazioni iniziate entro 30 minuti dall'evento)
+    // Nota: Su Supabase le date sono spesso in UTC, assicurati che i fusi orari coincidano.
+    final startWindow = event.startTime.subtract(const Duration(minutes: 15)).toIso8601String();
+    final endWindow = event.startTime.add(const Duration(hours: 2)).toIso8601String();
+
+    try {
+      // Query su Supabase: dammi un meeting creato in quel lasso di tempo
+      final response = await supabase
+          .from('meetings') // Assicurati che la tabella si chiami 'meetings' o 'transcripts'
+          .select()
+          .gte('created_at', startWindow) // Maggiore o uguale all'inizio
+          .lte('created_at', endWindow)   // Minore o uguale alla fine
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        return null; // Nessuna trascrizione trovata
+      }
+
+      // Convertiamo il JSON di Supabase nel tuo oggetto Meeting
+      // Costruzione manuale se non hai fromMap
+      return Meeting(
+        id: response['id'].toString(),
+        title: response['title'] ?? event.title,
+        transcription: response['transcript'] ?? "", // Qui prende il testo VERO dal DB
+        createdAt: DateTime.parse(response['created_at']),
+        audioUrl: response['audio_url'] ?? "",
+        category: response['category'] ?? "General",
+      ); // Assicurati che Meeting abbia fromMap, altrimenti vedi sotto
+
+    } catch (e) {
+      debugPrint("Errore fetch meeting: $e");
+      return null;
+    }
+  }
+
+  // Apre il BottomSheet che contiene la logica di registrazione reale (identica alla Home)
+  void _openRecordingSheet(CalendarEvent event) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, 
+      backgroundColor: Colors.transparent,
+      builder: (context) => RecordingSheet(eventTitle: event.title),
+    ).then((_) {
+      // Quando chiudi il foglio, ricarica gli eventi (se l'AI ne ha creati di nuovi)
+      _loadEvents();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +432,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         itemCount: selectedEvents.length,
                         itemBuilder: (context, index) {
                           final event = selectedEvents[index];
-                          return _EventCard(event: event);
+                          // GESTURE DETECTOR CON NUOVA LOGICA
+                          return GestureDetector(
+                            onTap: () => _handleEventTap(event),
+                            child: _EventCard(event: event),
+                          );
                         },
                       ),
                   const SizedBox(height: 40),
@@ -313,9 +450,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final titleController = TextEditingController();
     final locationController = TextEditingController(text: 'Conference Room A');
     
-    TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
-    int durationHours = 1;
-
+    // CAMBIAMENTO QUI: Usiamo un controller per la durata in MINUTI
+    // Impostiamo 15 minuti di default, così è comodo per i test
+    final durationController = TextEditingController(text: '15'); 
+    
+    TimeOfDay selectedTime = TimeOfDay.now(); // Imposta l'ora attuale per comodità
     DateTime currentSelectedDate = _selectedDay;
 
     await showModalBottomSheet(
@@ -358,6 +497,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 20),
                     
+                    // Selezione Data
                     InkWell(
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -392,6 +532,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     const SizedBox(height: 16),
                     
+                    // Titolo Evento
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
@@ -402,9 +543,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    
+                    // Riga Ora e Durata (MINUTI)
                     Row(
                       children: [
                         Expanded(
+                          flex: 3,
                           child: InkWell(
                             onTap: () async {
                               final time = await showTimePicker(
@@ -421,29 +565,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 color: const Color(0xFFF1F1F5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text("At ${selectedTime.format(context)}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                              child: Text(
+                                "At ${selectedTime.format(context)}", 
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
+                        
+                        // CAMBIAMENTO QUI: Input per MINUTI invece che ORE
                         Expanded(
+                          flex: 2,
                           child: TextField(
+                            controller: durationController,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              hintText: 'Hours',
+                              hintText: 'Min',
                               filled: true,
                               fillColor: const Color(0xFFF1F1F5),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              suffixText: 'h'
+                              suffixText: 'min', // Etichetta minuti
                             ),
-                            onChanged: (val) {
-                              durationHours = int.tryParse(val) ?? 1;
-                            },
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
+                    
+                    // Location
                     TextField(
                       controller: locationController,
                       decoration: InputDecoration(
@@ -455,6 +606,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    
+                    // Bottone Salva
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -470,6 +623,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onPressed: () async {
                           if (titleController.text.trim().isEmpty) return;
                           
+                          // Convertiamo l'input stringa in int (default 15 minuti se vuoto)
+                          int minutes = int.tryParse(durationController.text) ?? 15;
+
                           final startTime = DateTime(
                             currentSelectedDate.year,
                             currentSelectedDate.month,
@@ -478,11 +634,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             selectedTime.minute,
                           );
                           
-                          final endTime = startTime.add(Duration(hours: durationHours));
+                          // CAMBIAMENTO QUI: Aggiungiamo minuti, non ore
+                          final endTime = startTime.add(Duration(minutes: minutes));
 
                           final fullDescription = "Location: ${locationController.text}";
 
-                          // Creiamo l'oggetto evento (senza ID Google per ora)
                           final event = CalendarEvent(
                             title: titleController.text.trim(),
                             description: fullDescription,
@@ -491,7 +647,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             isAllDay: false,
                           );
 
-                          // Chiamiamo il servizio che gestirà sia Google che Supabase
                           await _service.addEvent(event);
 
                           if (mounted) {
@@ -700,6 +855,208 @@ class _EventCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ==============================================================================
+//  WIDGET POPUP PER LA REGISTRAZIONE (CON LOGICA COMPLETA DALLA HOME)
+// ==============================================================================
+class RecordingSheet extends StatefulWidget {
+  final String eventTitle;
+  const RecordingSheet({super.key, required this.eventTitle});
+
+  @override
+  State<RecordingSheet> createState() => _RecordingSheetState();
+}
+
+class _RecordingSheetState extends State<RecordingSheet> {
+  // Servizi
+  final AudioRecordingService _audioService = AudioRecordingService();
+  final OpenAIService _openAIService = OpenAIService();
+  final MeetingRepository _meetingRepo = MeetingRepository();
+  final CalendarService _calendarService = CalendarService();
+
+  bool _isRecording = false;
+  bool _isProcessing = false;
+  String _statusMessage = "Ready to record";
+
+  @override
+  void dispose() {
+    // Se l'utente chiude il foglio mentre registra, fermiamo la registrazione
+    if (_isRecording) {
+      _audioService.stopRecording(); 
+    }
+    super.dispose();
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isProcessing) return;
+
+    if (!_isRecording) {
+      // START
+      try {
+        await _audioService.startRecording();
+        if (mounted) {
+          setState(() {
+            _isRecording = true;
+            _statusMessage = "Recording in progress...";
+          });
+        }
+      } catch (e) {
+        if(mounted) setState(() => _statusMessage = "Error starting: $e");
+      }
+    } else {
+      // STOP & PROCESS
+      try {
+        if (mounted) {
+          setState(() {
+            _isRecording = false;
+            _isProcessing = true;
+            _statusMessage = "Processing audio & AI analysis...";
+          });
+        }
+
+        final path = await _audioService.stopRecording();
+        
+        if (path != null) {
+          // 1. Carica bytes audio
+          Uint8List audioBytes;
+          if (path.startsWith('http') || path.startsWith('blob')) {
+             final response = await http.get(Uri.parse(path));
+             audioBytes = response.bodyBytes;
+          } else {
+             final file = File(path);
+             audioBytes = await file.readAsBytes();
+          }
+
+          // 2. Trascrivi con OpenAI (Whisper)
+          final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a'); 
+          
+          // 3. Analizza testo per trovare nuovi meeting (Auto-Add to Calendar)
+          final detectedEvent = _analyzeTextForMeeting(transcript);
+          if (detectedEvent != null) {
+            await _calendarService.addEvent(detectedEvent);
+             if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("📅 New event detected: ${detectedEvent.title}")));
+             }
+          }
+
+          // 4. Carica file su Storage (Supabase)
+          final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
+          
+          // 5. Salva il meeting (Transcripts)
+          await _meetingRepo.saveMeeting(
+            title: widget.eventTitle, // Usiamo il titolo dell'evento calendario come titolo meeting
+            transcript: transcript,
+            audioUrl: audioUrl,
+          );
+
+          if (mounted) {
+            setState(() {
+              _isProcessing = false;
+              _statusMessage = "Done! Saved to Transcripts.";
+            });
+            // Chiudi il foglio dopo breve attesa
+            Future.delayed(const Duration(seconds: 1), () {
+              if (mounted) Navigator.pop(context);
+            });
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+            _statusMessage = "Error: $e";
+          });
+        }
+      }
+    }
+  }
+
+  // Logica copiata dalla Home per rilevare date nel testo
+  CalendarEvent? _analyzeTextForMeeting(String text) {
+    final lowerText = text.toLowerCase();
+    if (!lowerText.contains('meeting')) return null;
+
+    final now = DateTime.now();
+    DateTime? eventDate;
+
+    final dayRegex = RegExp(r'(next\s+)?(on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)');
+    final dayMatch = dayRegex.firstMatch(lowerText);
+
+    if (dayMatch != null) {
+      final isNext = dayMatch.group(1) != null;
+      final dayName = dayMatch.group(3)!;
+      eventDate = _getDateFromDayName(dayName, isNext: isNext);
+    }
+
+    if (eventDate != null) {
+      final startTime = DateTime(eventDate.year, eventDate.month, eventDate.day, 10, 0);
+      return CalendarEvent(
+        title: "Meeting from Recording",
+        description: "Source: ${widget.eventTitle}\nContent: $text",
+        startTime: startTime,
+        endTime: startTime.add(const Duration(hours: 1)),
+        isAllDay: false,
+      );
+    }
+    return null;
+  }
+
+  DateTime _getDateFromDayName(String dayName, {bool isNext = false}) {
+    final days = {'monday': DateTime.monday, 'tuesday': DateTime.tuesday, 'wednesday': DateTime.wednesday, 'thursday': DateTime.thursday, 'friday': DateTime.friday, 'saturday': DateTime.saturday, 'sunday': DateTime.sunday};
+    final now = DateTime.now();
+    final targetWeekday = days[dayName] ?? DateTime.monday;
+    int daysDiff = targetWeekday - now.weekday;
+    if (daysDiff <= 0) daysDiff += 7;
+    if (isNext) daysDiff += 7;
+    return now.add(Duration(days: daysDiff));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
+          Text("Recording: ${widget.eventTitle}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18), textAlign: TextAlign.center),
+          const SizedBox(height: 10),
+          Text(_statusMessage, style: TextStyle(color: _isProcessing ? Colors.deepPurple : Colors.grey, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 30),
+          
+          if (_isProcessing)
+             const CircularProgressIndicator()
+          else
+            GestureDetector(
+              onTap: _toggleRecording,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 80, width: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isRecording ? Colors.red : Colors.black,
+                  boxShadow: [BoxShadow(color: (_isRecording ? Colors.red : Colors.black).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))],
+                ),
+                child: Icon(
+                  _isRecording ? Icons.stop : Icons.mic,
+                  color: Colors.white, size: 36,
+                ),
+              ),
+            ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
