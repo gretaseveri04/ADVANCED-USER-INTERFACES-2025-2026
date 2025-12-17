@@ -37,10 +37,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isAiThinking = false;
   String? _meetingsContext; 
 
+  // NUOVO: Variabile per memorizzare lo stream ed evitare riconnessioni continue
+  late Stream<List<ChatMessage>> _messagesStream;
+
   @override
   void initState() {
     super.initState();
     _loadMeetingContext();
+    // Inizializziamo lo stream qui, UNA VOLTA SOLA.
+    // Grazie a Supabase Realtime, riceverà automaticamente i nuovi messaggi.
+    _messagesStream = _chatService.getMessagesStream(widget.chatId);
   }
 
   Future<void> _loadMeetingContext() async {
@@ -69,6 +75,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _controller.clear(); 
     try {
       await _chatService.sendMessage(widget.chatId, text);
+      
+      // OPTIONAL: Se Realtime su Supabase è lento, puoi decommentare la riga sotto
+      // per forzare un aggiornamento grafico immediato (anche se poco elegante).
+      // setState(() {}); 
+
       if (text.toLowerCase().contains("@ai")) {
         _triggerAiResponse(text);
       }
@@ -84,12 +95,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
       final aiReply = await _aiService.getChatResponse(userQuery, contextData: _meetingsContext);
       final myUserId = _supabase.auth.currentUser!.id;
       
+      // Inseriamo la risposta AI. Nota: NON mettiamo 'created_at', lasciamo fare al DB.
       await _supabase.from('messages').insert({
         'chat_id': widget.chatId,
         'sender_id': myUserId, 
         'content': aiReply,
         'is_ai': true, 
-        'created_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       print("Errore AI: $e");
@@ -120,7 +131,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FF),
-      // --- HEADER UNIFICATO ---
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -158,16 +168,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ],
         ),
       ),
-      // ------------------------
       body: Column(
         children: [
           Expanded(
+            // CORREZIONE QUI: Usiamo _messagesStream invece di chiamare la funzione ogni volta
             child: StreamBuilder<List<ChatMessage>>(
-              stream: _chatService.getMessagesStream(widget.chatId),
+              stream: _messagesStream, 
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData) {
+                  // Se non abbiamo dati, mostriamo un loader o niente
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
                 final messages = snapshot.data!;
-                if (messages.isEmpty) return const Center(child: Text("Start the conversation!", style: TextStyle(color: Colors.grey)));
+                
+                // Se la lista è vuota
+                if (messages.isEmpty) {
+                  return const Center(child: Text("Start the conversation!", style: TextStyle(color: Colors.grey)));
+                }
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -206,6 +224,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
   
   Widget _buildBubble(ChatMessage msg) {
+    // ... (Il resto del codice UI rimane identico) ...
     final isMe = msg.isMine && !msg.isAi;
     final isAi = msg.isAi;
     String senderName = isAi ? "AI Assistant ✨" : (_senderNames[msg.senderId] ?? "...");

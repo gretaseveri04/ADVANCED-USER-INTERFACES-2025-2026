@@ -25,7 +25,7 @@ class MeetingRepository {
     }
   }
 
-  Future<void> saveMeeting({
+ Future<void> saveMeeting({
     required String title,
     required String transcript,
     required String audioUrl,
@@ -35,10 +35,11 @@ class MeetingRepository {
     await _supabase.from('meetings').insert({
       'user_id': userId,
       'title': title,
-      'transcription_text': transcript,
+      'transcription_text': transcript, // Assicurati che la colonna si chiami così nel DB
       'audio_url': audioUrl,
-      'category': 'WORK', 
-      'created_at': DateTime.now().toIso8601String(),
+      'category': 'WORK',
+      // CORREZIONE FONDAMENTALE QUI SOTTO:
+      'created_at': DateTime.now().toUtc().toIso8601String(), 
     });
   }
 

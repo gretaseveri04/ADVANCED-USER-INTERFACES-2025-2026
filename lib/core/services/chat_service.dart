@@ -176,6 +176,12 @@ class ChatService {
   Future<void> sendMessage(String chatId, String content) async {
     final myId = _supabase.auth.currentUser?.id;
     if (myId == null) return;
-    await _supabase.from('messages').insert({'chat_id': chatId, 'sender_id': myId, 'content': content});
+
+    // CORRETTO: Non stiamo passando 'created_at', ci pensa il DB
+    await _supabase.from('messages').insert({
+      'chat_id': chatId, 
+      'sender_id': myId, 
+      'content': content
+    });
   }
 }
