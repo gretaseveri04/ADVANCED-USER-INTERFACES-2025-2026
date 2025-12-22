@@ -1,7 +1,7 @@
-# Limitless: Digital Twin Briefing System - Technical Documentation
+# FocusMate: Digital Twin Briefing System - Technical Documentation
 
 ## 1. Project Overview
-Limitless is a multimodal application designed to transform meeting recordings into an interactive briefing experience. The system integrates advanced Speech-to-Text (STT), Large Language Models (LLM) for summarization, high-fidelity Text-to-Speech (TTS), and real-time vector animations. The architecture is built on a cross-platform Flutter frontend supported by a multi-cloud backend (Supabase, Azure, and Google Cloud).
+FocusMate is a multimodal application designed to transform meeting recordings into an interactive briefing experience. The system integrates advanced Speech-to-Text (STT), Large Language Models (LLM) for summarization, high-fidelity Text-to-Speech (TTS), and real-time vector animations. The architecture is built on a cross-platform Flutter frontend supported by a multi-cloud backend (Supabase, Azure, and Google Cloud).
 
 ---
 
