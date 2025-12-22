@@ -28,6 +28,7 @@ class MeetingRepository {
  Future<void> saveMeeting({
     required String title,
     required String transcript,
+    required String summary,
     required String audioUrl,
   }) async {
     final userId = _supabase.auth.currentUser!.id;
@@ -36,6 +37,7 @@ class MeetingRepository {
       'user_id': userId,
       'title': title,
       'transcription_text': transcript, 
+      'summary': summary,
       'audio_url': audioUrl,
       'category': 'WORK',
       'created_at': DateTime.now().toUtc().toIso8601String(), 

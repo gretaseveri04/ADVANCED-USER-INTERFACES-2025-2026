@@ -11,6 +11,7 @@ import 'package:limitless_app/core/services/calendar_service.dart';
 import 'package:limitless_app/core/services/audio_recording_service.dart';
 import 'package:limitless_app/core/services/openai_service.dart';
 import 'package:limitless_app/core/services/meeting_repository.dart';
+import 'package:limitless_app/core/services/ai_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,7 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Errore home events: $e");
       if (mounted) setState(() => _isLoadingEvents = false);
     }
   }
@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   backgroundColor: Colors.deepPurple, 
-                  content: Text("📅 Evento creato: ${detectedEvent.title}"),
+                  content: Text("📅 Event Detected: ${detectedEvent.title}"),
                   duration: const Duration(seconds: 4),
                 ),
               );
@@ -194,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final audioUrl = await _meetingRepo.uploadAudioBytes(audioBytes);
+          final String briefingText = await AIService.generateBriefing(transcript);
           
           String finalTitle;
           if (userTitle != null && userTitle.isNotEmpty) {
@@ -207,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
           await _meetingRepo.saveMeeting(
             title: finalTitle,
             transcript: transcript,
+            summary: briefingText,
             audioUrl: audioUrl,
           );
 

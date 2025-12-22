@@ -67,7 +67,6 @@ class _ChatScreenState extends State<ChatScreen> {
         _meetingsContext = buffer.toString();
         _isContextLoaded = true;
       });
-      print("🧠 Memoria AI caricata: ${meetings.length} meeting indicizzati.");
       
     } catch (e) {
       print("Errore caricamento contesto meeting: $e");

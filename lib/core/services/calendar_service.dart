@@ -61,10 +61,8 @@ class CalendarService {
 
         final insertedEvent = await calendarApi.events.insert(googleEvent, "primary");
         newGoogleId = insertedEvent.id;
-        print("✅ Evento sincronizzato su Google Calendar!");
       }
     } catch (e) {
-      print("⚠️ Impossibile sincronizzare con Google (salvo solo in locale): $e");
     }
 
     try {
@@ -73,7 +71,6 @@ class CalendarService {
           .from('calendar_events')
           .insert(eventToSave.toMap(userId));
     } catch (e) {
-      print("Errore salvataggio database Supabase: $e");
       throw e; 
     }
   }
@@ -91,7 +88,6 @@ class CalendarService {
 
       return data.map((e) => CalendarEvent.fromJson(e)).toList();
     } catch (e) {
-      print('Errore recupero eventi: $e');
       return [];
     }
   }
@@ -113,7 +109,6 @@ class CalendarService {
 
       return data.map((e) => CalendarEvent.fromJson(e)).toList();
     } catch (e) {
-      print('Errore eventi giornalieri: $e');
       return [];
     }
   }

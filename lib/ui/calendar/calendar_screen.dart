@@ -14,6 +14,7 @@ import 'package:limitless_app/ui/transcript/transcript_detail_screen.dart';
 import 'package:limitless_app/core/services/audio_recording_service.dart';
 import 'package:limitless_app/core/services/meeting_repository.dart';
 import 'package:limitless_app/core/services/openai_service.dart'; 
+import 'package:limitless_app/core/services/ai_service.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -46,7 +47,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _eventsByDay = _groupByDay(events);
       });
     } catch (e) {
-      debugPrint("Errore caricamento eventi: $e");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -114,8 +114,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           final placeholderMeeting = Meeting(
             id: 'placeholder',
             title: event.title,
-            transcription: "Nessuna registrazione trovata per questo evento.\n"
-                           "Probabilmente non hai registrato l'audio durante questo meeting.",
+            transcription: "No recording found for this event.\n"
+                           "Probably no audio was recorded during this meeting.",
+            summary: "Impossible to create a summary for this event.",
             createdAt: event.startTime,
             audioUrl: "",
             category: "General",
@@ -132,7 +133,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       } catch (e) {
         if (mounted) Navigator.pop(context); 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore nel recupero della trascrizione: $e")),
+          SnackBar(content: Text("Error: $e")),
         );
       }
     } 
@@ -152,8 +153,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final startQuery = localStartOfDay.toUtc().toIso8601String();
     final endQuery = localEndOfDay.toUtc().toIso8601String();
 
-    debugPrint("🔍 CERCO MEETING: '$cleanTitle' tra $startQuery e $endQuery");
-
     try {
       final response = await supabase
           .from('meetings')
@@ -166,23 +165,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           .maybeSingle();
 
       if (response == null) {
-        debugPrint("Nessun meeting trovato. Controlla che i titoli coincidano.");
         return null; 
       }
-
-      debugPrint("Meeting trovato! ID: ${response['id']}");
 
       return Meeting(
         id: response['id'].toString(),
         title: response['title'] ?? event.title,
         transcription: response['transcription_text'] ?? response['transcript'] ?? "Testo non trovato",
+        summary: response['summary'] ?? "Riassunto non disponibile.",
         createdAt: DateTime.parse(response['created_at']), 
         audioUrl: response['audio_url'] ?? "",
         category: response['category'] ?? "General",
       );
 
     } catch (e) {
-      debugPrint("Errore ricerca DB: $e");
       return null;
     }
   }
@@ -927,6 +923,9 @@ class _RecordingSheetState extends State<RecordingSheet> {
 
           final transcript = await _openAIService.transcribeAudioBytes(audioBytes, 'recording.m4a');
 
+          setState(() => _statusMessage = "Generating AI Summary...");
+          final String briefingText = await AIService.generateBriefing(transcript);
+
           final detectedEvent = _analyzeTextForMeeting(transcript);
           if (detectedEvent != null) {
             await _calendarService.addEvent(detectedEvent);
@@ -942,6 +941,7 @@ class _RecordingSheetState extends State<RecordingSheet> {
           await _meetingRepo.saveMeeting(
             title: widget.eventTitle,
             transcript: transcript,
+            summary: briefingText,
             audioUrl: audioUrl,
           );
 

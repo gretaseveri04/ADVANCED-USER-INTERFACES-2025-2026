@@ -9,8 +9,6 @@ class OpenAIService {
   
   Future<String> transcribeAudioBytes(Uint8List audioBytes, String filename) async {
     final url = "${AzureConfig.endpoint}/openai/deployments/${AzureConfig.whisperDeploymentName}/audio/transcriptions?api-version=2024-06-01";
-    
-    print("🔹 Chiamata Azure Whisper (Audio)...");
 
     try {
       final request = http.MultipartRequest("POST", Uri.parse(url));
@@ -32,10 +30,10 @@ class OpenAIService {
         final jsonResponse = jsonDecode(responseBody);
         return jsonResponse['text'];
       } else {
-        throw Exception("Errore Azure Whisper: $responseBody");
+        throw Exception("Error Azure Whisper: $responseBody");
       }
     } catch (e) {
-      print("❌ Errore Audio: $e");
+      print("Error Audio: $e");
       rethrow;
     }
   }
@@ -88,7 +86,7 @@ class OpenAIService {
         throw Exception("Errore Azure Chat: ${response.body}");
       }
     } catch (e) {
-      print("❌ Errore Chat: $e");
+      print("Errore Chat: $e");
       return "Non riesco a connettermi al servizio AI.";
     }
   }
