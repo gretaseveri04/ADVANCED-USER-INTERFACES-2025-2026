@@ -45,7 +45,7 @@ android {
         applicationId "com.example.limitless_app"
         
         // --- MODIFICA FONDAMENTALE PER AUDIO RECORDER ---
-        minSdkVersion 21 
+        minSdkVersion flutter.minSdkVersion 
         // ------------------------------------------------
         
         targetSdkVersion flutter.targetSdkVersion
@@ -66,11 +66,6 @@ flutter {
 
 // --- DIPENDENZE AGGIUNTE QUI IN FONDO ---
 dependencies {
-    // Dipendenza standard per Kotlin (usa la versione definita nel file root)
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-
-    // Le librerie che hai richiesto per Liste e Google Calendar
-    implementation "androidx.recyclerview:recyclerview:1.2.1"
-    implementation "com.google.api-client:google-api-client-android:1.33.2"
-    implementation "com.google.apis:google-api-services-calendar:v3-rev305-1.25.0"
+    // Nota: per Google Calendar in questo progetto si usa il package Dart `googleapis`,
+    // quindi non servono dipendenze Java/Kotlin aggiuntive qui.
 }
