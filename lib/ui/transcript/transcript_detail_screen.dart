@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:limitless_app/models/meeting_model.dart';
-import 'package:limitless_app/widgets/briefing_avatar.dart'; // Importa l'avatar robotico
-import 'package:limitless_app/core/services/briefing_service.dart'; // Servizio ElevenLabs
-import 'package:audioplayers/audioplayers.dart'; // Player audio
+import 'package:limitless_app/widgets/briefing_avatar.dart'; 
+import 'package:limitless_app/core/services/briefing_service.dart'; 
+import 'package:audioplayers/audioplayers.dart'; 
 
 class TranscriptDetailScreen extends StatefulWidget {
   final Meeting meeting; 
@@ -16,15 +16,14 @@ class TranscriptDetailScreen extends StatefulWidget {
 class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final BriefingService _briefingService = BriefingService();
-  bool _isBillTalking = false; // Stato per animare il robottino
+  bool _isBillTalking = false; 
 
   @override
   void dispose() {
-    _audioPlayer.dispose(); // Pulizia risorse audio
+    _audioPlayer.dispose(); 
     super.dispose();
   }
 
-  // Funzione per avviare il briefing vocale di Bill Oxley
   void _playAIBriefing() async {
     if (widget.meeting.summary.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -33,16 +32,13 @@ class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
       return;
     }
 
-    setState(() => _isBillTalking = true); // Attiva l'animazione
+    setState(() => _isBillTalking = true); 
 
     try {
-      // 1. Ottieni l'audio sintetizzato dal riassunto
       final path = await _briefingService.getBriefingAudio(widget.meeting.summary);
       
-      // 2. Riproduci il file
       await _audioPlayer.play(DeviceFileSource(path));
       
-      // 3. Quando l'audio finisce, ferma l'animazione
       _audioPlayer.onPlayerComplete.listen((_) {
         if (mounted) setState(() => _isBillTalking = false);
       });
@@ -95,7 +91,6 @@ class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- SEZIONE ASSISTENTE AI (Wow Factor) ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -108,7 +103,6 @@ class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
               ),
               child: Column(
                 children: [
-                  // L'avatar Rive sincronizzato con lo stato _isBillTalking
                   BriefingAvatar(isTalking: _isBillTalking),
                   const SizedBox(height: 10),
                   Text(
@@ -133,7 +127,6 @@ class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
 
             const SizedBox(height: 25),
             
-            // --- INFO DATA RECORDING ---
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -168,8 +161,7 @@ class _TranscriptDetailScreenState extends State<TranscriptDetailScreen> {
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1),
               ),
             ),
-            
-            // --- CONTENUTO DELLA TRASCRIZIONE ---
+              
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),

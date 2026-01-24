@@ -35,7 +35,6 @@ class CustomBottomNav extends StatelessWidget {
               _navItem(Icons.home, "Home", 0),
               _navItem(Icons.mic, "Record", 1),
               
-              // Logo centrale
               _navItem("assets/images/logo.png", "AI", 2, isAsset: true),
               
               _navItem(Icons.chat_bubble_outline, "Chat", 3),
@@ -70,12 +69,9 @@ class CustomBottomNav extends StatelessWidget {
             child: isAsset
                 ? Image.asset(
                     icon as String,
-                    width: 26, // Stessa grandezza delle icone
+                    width: 26, 
                     height: 26,
                     fit: BoxFit.contain,
-                    // LOGICA COLORE: 
-                    // Se attivo -> Bianco (per contrasto sul viola)
-                    // Se inattivo -> Null (mostra i colori originali del logo invece del grigio)
                     color: isActive ? Colors.white : null, 
                   )
                 : Icon(
